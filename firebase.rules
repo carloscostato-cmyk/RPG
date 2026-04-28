@@ -1,0 +1,79 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Regras para Salas
+    match /rooms/{roomId} {
+      allow read: if isAuthenticated() && isPlayerInRoom(roomId);
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (isMaster(roomId) || isOwnPlayerUpdate());
+      allow delete: if isAuthenticated() && isMaster(roomId);
+    }
+
+    // Regras para Personagens
+    match /characters/{characterId} {
+      allow read: if isAuthenticated() && isPlayerInRoom(resource.data.roomId);
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (isMaster(resource.data.roomId) || isOwner(resource.data.ownerId));
+      allow delete: if isAuthenticated() && isMaster(resource.data.roomId);
+    }
+
+    // Regras para Tokens
+    match /tokens/{tokenId} {
+      allow read: if isAuthenticated() && isPlayerInRoom(resource.data.roomId);
+      allow create: if isAuthenticated() && isMaster(resource.data.roomId);
+      allow update: if isAuthenticated() && isMaster(resource.data.roomId);
+      allow delete: if isAuthenticated() && isMaster(resource.data.roomId);
+    }
+
+    // Regras para Músicas
+    match /music/{musicId} {
+      allow read: if isAuthenticated() && isPlayerInRoom(resource.data.roomId);
+      allow create: if isAuthenticated() && isMaster(resource.data.roomId);
+      allow update: if isAuthenticated() && isMaster(resource.data.roomId);
+      allow delete: if isAuthenticated() && isMaster(resource.data.roomId);
+    }
+  }
+}
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /avatars/{userId}/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    match /maps/{roomId}/{allPaths=**} {
+      allow read: if isAuthenticated() && isPlayerInRoom(roomId);
+      allow write: if isAuthenticated() && isMaster(roomId);
+    }
+    
+    match /tokens/{roomId}/{allPaths=**} {
+      allow read: if isAuthenticated() && isPlayerInRoom(roomId);
+      allow write: if isAuthenticated() && isMaster(roomId);
+    }
+  }
+}
+
+// Funções Helper
+function isAuthenticated() {
+  return request.auth != null;
+}
+
+function isPlayerInRoom(roomId) {
+  return exists(/databases/$(database)/documents/rooms/$(roomId)) 
+    && request.auth.uid in get(/databases/$(database)/documents/rooms/$(roomId)).data.players.map(p => p.id);
+}
+
+function isMaster(roomId) {
+  return get(/databases/$(database)/documents/rooms/$(roomId)).data.masterId == request.auth.uid;
+}
+
+function isOwner(ownerId) {
+  return ownerId == request.auth.uid;
+}
+
+function isOwnPlayerUpdate() {
+  return request.resource.data.keys().hasOnly(['currentHp', 'maxHp', 'attributes', 'inventory'])
+    && isOwner(resource.data.ownerId);
+}
