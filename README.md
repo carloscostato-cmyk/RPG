@@ -66,6 +66,18 @@ npm run dev
 ✅ **Frontend:** http://localhost:5173  
 ✅ **Backend Socket.io:** http://localhost:3001
 
+## 🎮 Como abrir e jogar
+
+Se você quiser iniciar sem lembrar comandos, use o arquivo `START-APLICACAO.bat` na pasta raiz do projeto.
+
+Passo a passo:
+1. Dê duplo clique em `START-APLICACAO.bat`.
+2. Aguarde as janelas do backend e do frontend abrirem.
+3. Abra o navegador em http://localhost:5173.
+4. Entre na sala ou crie uma nova e comece a jogar.
+
+Esse arquivo usa `C:\Projects\RPG` quando disponível e só instala dependências na primeira execução.
+
 ---
 
 ## 📂 Estrutura do Projeto
@@ -201,6 +213,14 @@ Conecte o repositório no [Vercel](https://vercel.com) e ele deploya automaticam
 | `npm run preview` | Preview do build de produção |
 | `npm run start` | Inicia servidor backend em produção |
 | `npm run install:all` | Instala dependências de todos os pacotes |
+
+## 🪟 Atalho no Windows
+
+Se estiver no Windows, o jeito mais simples é manter o projeto em `C:\Projects\RPG` e usar o atalho:
+
+```bat
+START-APLICACAO.bat
+```
 
 ---
 
