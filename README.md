@@ -46,6 +46,18 @@ cp .env.example .env
 # Edite o arquivo .env com suas credenciais do Firebase
 ```
 
+### GitHub / CI secrets
+
+- Add `RAILWAY_API_TOKEN` in GitHub: Repository → Settings → Secrets and variables → Actions → New repository secret.
+- The `railway-deploy.yml` workflow uses `RAILWAY_API_TOKEN` to login and deploy; **do not** commit tokens to the repo.
+- If you exposed a token, revoke it in Railway and create a new one.
+
+Example: to trigger CI after adding the secret locally:
+```bash
+git commit --allow-empty -m "trigger CI"
+git push origin main
+```
+
 ### 4. Inicie o ambiente de desenvolvimento
 ```bash
 npm run dev
