@@ -22,6 +22,8 @@ Mesa virtual para RPG com React, Socket.io, mapa em canvas, fichas, dados, chat,
 
 ## Status
 
+**Play online:** [https://darling-snickerdoodle-b65b12.netlify.app](https://darling-snickerdoodle-b65b12.netlify.app)
+
 ### Pronto
 - Criar sala com código único.
 - Entrar em sala com múltiplos jogadores.
