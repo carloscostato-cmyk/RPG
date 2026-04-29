@@ -1,4 +1,4 @@
-# RPG Virtual Table
+# Themps NICE GAMES
 
 Mesa virtual para RPG com React, Socket.io, mapa em canvas, fichas, dados, chat, timer e player de audio por sala.
 

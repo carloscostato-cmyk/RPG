@@ -58,14 +58,14 @@ export const LandingPage: React.FC = () => {
         <div className="mb-8 text-center">
           <motion.div
             className="mb-5 inline-flex items-center justify-center rounded-full border border-amber-200/50 bg-white/10 p-4 shadow-[0_0_38px_rgba(251,191,36,0.38)] backdrop-blur"
-            animate={{ rotate: [0, 5, -5, 0] }}
-            transition={{ repeat: Infinity, duration: 4, repeatDelay: 5 }}
+            animate={{ rotate: [0, 5, -5, 0], y: [0, -6, 6, 0] }}
+            transition={{ repeat: Infinity, duration: 4, repeatDelay: 2, ease: 'easeInOut' }}
           >
             <Dice2 size={62} className="text-amber-200 drop-shadow-[0_0_18px_rgba(250,204,21,0.8)]" />
           </motion.div>
 
           <p className="mb-2 text-xs font-bold uppercase tracking-[0.42em] text-cyan-200">
-            Crystal tabletop
+            Themps NICE GAMES
           </p>
           <h1 className="font-display gold-text mb-3 text-5xl font-extrabold leading-tight drop-shadow-[0_3px_18px_rgba(15,23,42,0.35)]">
             MESA VIRTUAL RPG
