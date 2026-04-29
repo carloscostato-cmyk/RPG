@@ -14,11 +14,13 @@ interface GameContextType {
   isDarkMode: boolean;
   language: 'pt' | 'en';
   
-  createRoom: (name: string, playerName: string) => Promise<Room | null>;
-  joinRoom: (code: string, playerName: string) => Promise<Room | null>;
+  createRoom: (name: string, playerName: string, role: 'player' | 'spectator') => Promise<Room | null>;
+  joinRoom: (code: string, playerName: string, role: 'player' | 'spectator') => Promise<Room | null>;
   leaveRoom: () => void;
   sendMessage: (message: string) => void;
-  rollDice: (sides: number) => void;
+  rollDice: (notation: string) => void;
+  updatePlayerRole: (playerId: string, role: 'player' | 'spectator') => void;
+  setMapUrl: (url: string) => void;
   toggleDarkMode: () => void;
   setLanguage: (lang: 'pt' | 'en') => void;
 }
@@ -52,16 +54,50 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     setSocket(newSocket);
 
+    newSocket.on('room:update', (updatedRoom) => {
+      setRoom(updatedRoom);
+      setCurrentPlayer(prev => {
+        const updated = updatedRoom.players.find(p => p.id === newSocket.id);
+        return updated || prev;
+      });
+    });
+
+    newSocket.on('token:add', (token) => {
+      setTokens(prev => new Map(prev).set(token.id, token));
+    });
+
+    newSocket.on('token:move', (token) => {
+      setTokens(prev => new Map(prev).set(token.id, token));
+    });
+
+    newSocket.on('token:update', (token) => {
+      setTokens(prev => new Map(prev).set(token.id, token));
+    });
+
+    newSocket.on('token:remove', (tokenId) => {
+      setTokens(prev => {
+        const next = new Map(prev);
+        next.delete(tokenId);
+        return next;
+      });
+    });
+
+    newSocket.on('dice:roll', (roll) => {
+      if (roll.playerId !== newSocket.id) {
+        setDiceRolls(prev => [...prev.slice(-9), roll]);
+      }
+    });
+
     return () => {
       newSocket.disconnect();
     };
   }, []);
 
-  const createRoom = useCallback(async (name: string, playerName: string): Promise<Room | null> => {
+  const createRoom = useCallback(async (name: string, playerName: string, role: 'player' | 'spectator' = 'player'): Promise<Room | null> => {
     if (!socket) return null;
     
     return new Promise((resolve) => {
-      socket.emit('room:create', { name, playerName }, (room) => {
+      socket.emit('room:create', { name, playerName, role }, (room) => {
         setRoom(room);
         setCurrentPlayer(room.players[0]);
         resolve(room);
@@ -69,11 +105,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   }, [socket]);
 
-  const joinRoom = useCallback(async (code: string, playerName: string): Promise<Room | null> => {
+  const joinRoom = useCallback(async (code: string, playerName: string, role: 'player' | 'spectator' = 'player'): Promise<Room | null> => {
     if (!socket) return null;
     
     return new Promise((resolve) => {
-      socket.emit('room:join', { code, playerName }, (room) => {
+      socket.emit('room:join', { code, playerName, role }, (room) => {
         if (room) {
           setRoom(room);
           setCurrentPlayer(room.players.find(p => p.id === socket.id) || null);
@@ -103,18 +139,59 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [socket, currentPlayer]);
 
-  const rollDice = useCallback((sides: number) => {
+  const rollDice = useCallback((notation: string) => {
     if (socket && currentPlayer) {
-      const result = Math.floor(Math.random() * sides) + 1;
+      // Parse notation like "2d20+5"
+      const diceRegex = /^(\d+)?d(\d+)([+-]\d+)?$/i;
+      const match = notation.match(diceRegex);
+      
+      if (!match) {
+        console.error("Notação de dado inválida");
+        return;
+      }
+
+      const count = parseInt(match[1]) || 1;
+      const sides = parseInt(match[2]);
+      const bonus = parseInt(match[3]) || 0;
+      
+      if (sides > 1000) {
+        console.error("Limite de d1000 excedido");
+        return;
+      }
+
+      const results: number[] = [];
+      let total = 0;
+      for (let i = 0; i < count; i++) {
+        const res = Math.floor(Math.random() * sides) + 1;
+        results.push(res);
+        total += res;
+      }
+      total += bonus;
+
       const roll: DiceRoll = {
         id: Date.now().toString(),
         playerId: currentPlayer.id,
-        sides,
-        result,
+        notation,
+        results,
+        bonus,
+        total,
         timestamp: Date.now()
       };
+      
       socket.emit('dice:roll', roll);
       setDiceRolls(prev => [...prev.slice(-9), roll]);
+    }
+  }, [socket, currentPlayer]);
+
+  const updatePlayerRole = useCallback((playerId: string, role: 'player' | 'spectator') => {
+    if (socket && currentPlayer?.isMaster) {
+      socket.emit('room:update-player-role', { playerId, role });
+    }
+  }, [socket, currentPlayer]);
+
+  const setMapUrl = useCallback((url: string) => {
+    if (socket && currentPlayer?.isMaster) {
+      socket.emit('room:set-map', url);
     }
   }, [socket, currentPlayer]);
 
@@ -138,6 +215,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     leaveRoom,
     sendMessage,
     rollDice,
+    updatePlayerRole,
+    setMapUrl,
     toggleDarkMode,
     setLanguage
   };

@@ -12,6 +12,7 @@ export const LandingPage: React.FC = () => {
   const [playerName, setPlayerName] = useState('');
   const [roomName, setRoomName] = useState('');
   const [roomCode, setRoomCode] = useState('');
+  const [role, setRole] = useState<'player' | 'spectator'>('player');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -21,7 +22,7 @@ export const LandingPage: React.FC = () => {
     setLoading(true);
     setError('');
     
-    const room = await createRoom(roomName, playerName);
+    const room = await createRoom(roomName, playerName, role);
     if (room) {
       navigate(`/sala/${room.code}`);
     } else {
@@ -37,7 +38,7 @@ export const LandingPage: React.FC = () => {
     setLoading(true);
     setError('');
     
-    const room = await joinRoom(roomCode, playerName);
+    const room = await joinRoom(roomCode, playerName, role);
     if (room) {
       navigate(`/sala/${room.code}`);
     } else {
@@ -63,19 +64,19 @@ export const LandingPage: React.FC = () => {
             <Dice2 size={64} className="text-blue-500" />
           </motion.div>
           
-          <h1 className="text-4xl font-bold mb-2">MESA VIRTUAL RPG</h1>
+          <h1 className="text-4xl font-bold mb-2 tracking-tight">MESA VIRTUAL RPG</h1>
           <p className={`text-lg ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
             Jogar nunca foi tão fácil
           </p>
         </div>
 
-        <div className={`rounded-2xl p-6 shadow-xl ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+        <div className={`rounded-2xl p-6 shadow-2xl border ${isDarkMode ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-100'}`}>
           <div className="flex gap-2 mb-6">
             <button
               onClick={() => setMode('create')}
-              className={`flex-1 py-3 rounded-lg font-medium flex items-center justify-center gap-2 transition ${
+              className={`flex-1 py-3 rounded-lg font-medium flex items-center justify-center gap-2 transition-all ${
                 mode === 'create'
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20'
                   : isDarkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
@@ -85,9 +86,9 @@ export const LandingPage: React.FC = () => {
             
             <button
               onClick={() => setMode('join')}
-              className={`flex-1 py-3 rounded-lg font-medium flex items-center justify-center gap-2 transition ${
+              className={`flex-1 py-3 rounded-lg font-medium flex items-center justify-center gap-2 transition-all ${
                 mode === 'join'
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20'
                   : isDarkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
@@ -98,7 +99,7 @@ export const LandingPage: React.FC = () => {
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-2">Seu Nome</label>
+              <label className="block text-sm font-medium mb-2 opacity-70">Seu Nome</label>
               <input
                 type="text"
                 value={playerName}
@@ -110,9 +111,24 @@ export const LandingPage: React.FC = () => {
               />
             </div>
 
+            <div className="flex gap-2">
+              <button 
+                onClick={() => setRole('player')}
+                className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${role === 'player' ? 'bg-blue-600/20 text-blue-400 border border-blue-500/50' : 'bg-gray-700/50 text-gray-400 border border-transparent'}`}
+              >
+                🎒 Jogador
+              </button>
+              <button 
+                onClick={() => setRole('spectator')}
+                className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${role === 'spectator' ? 'bg-purple-600/20 text-purple-400 border border-purple-500/50' : 'bg-gray-700/50 text-gray-400 border border-transparent'}`}
+              >
+                👁️ Espectador
+              </button>
+            </div>
+
             {mode === 'create' ? (
               <div>
-                <label className="block text-sm font-medium mb-2">Nome da Sala</label>
+                <label className="block text-sm font-medium mb-2 opacity-70">Nome da Sala</label>
                 <input
                   type="text"
                   value={roomName}
@@ -125,7 +141,7 @@ export const LandingPage: React.FC = () => {
               </div>
             ) : (
               <div>
-                <label className="block text-sm font-medium mb-2">Código da Sala</label>
+                <label className="block text-sm font-medium mb-2 opacity-70">Código da Sala</label>
                 <input
                   type="text"
                   value={roomCode}
@@ -143,7 +159,7 @@ export const LandingPage: React.FC = () => {
               <motion.p 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="text-red-500 text-sm text-center"
+                className="text-red-500 text-sm text-center font-medium bg-red-500/10 py-2 rounded-lg"
               >
                 {error}
               </motion.p>
@@ -152,7 +168,7 @@ export const LandingPage: React.FC = () => {
             <button
               onClick={mode === 'create' ? handleCreateRoom : handleJoinRoom}
               disabled={loading || !playerName.trim() || (mode === 'create' ? !roomName.trim() : !roomCode.trim())}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 rounded-lg transition flex items-center justify-center gap-2"
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 rounded-lg transition-all transform active:scale-95 shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2"
             >
               {loading ? (
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />

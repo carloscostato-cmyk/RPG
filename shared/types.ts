@@ -15,6 +15,7 @@ export interface Player {
   isMaster: boolean;
   connected: boolean;
   characterId?: string;
+  role: 'player' | 'spectator';
 }
 
 export interface Character {
@@ -88,8 +89,10 @@ export interface TurnTimer {
 export interface DiceRoll {
   id: string;
   playerId: string;
-  sides: number;
-  result: number;
+  notation: string;
+  results: number[];
+  bonus: number;
+  total: number;
   timestamp: number;
 }
 
@@ -106,6 +109,10 @@ export type SocketEvents = {
 
   'character:update': (character: Character) => void;
   'dice:roll': (roll: DiceRoll) => void;
+  'dice:request': (notation: string) => void;
+
+  'room:update-player-role': (data: { playerId: string; role: 'player' | 'spectator' }) => void;
+  'room:set-map': (url: string) => void;
 
   'music:play': (track: MusicTrack) => void;
   'music:pause': () => void;

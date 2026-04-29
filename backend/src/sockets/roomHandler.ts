@@ -14,7 +14,8 @@ export function setupRoomHandlers(
       id: socket.id,
       name: data.playerName,
       isMaster: true,
-      connected: true
+      connected: true,
+      role: data.role || 'player'
     };
 
     const room: Room = {
@@ -46,7 +47,8 @@ export function setupRoomHandlers(
       id: socket.id,
       name: data.playerName,
       isMaster: false,
-      connected: true
+      connected: true,
+      role: data.role || 'player'
     };
 
     foundRoom.players.push(player);
@@ -55,8 +57,27 @@ export function setupRoomHandlers(
     io.to(foundRoom.id).emit('player:joined', player);
     io.to(foundRoom.id).emit('room:update', foundRoom);
     
-    console.log(`Jogador ${data.playerName} entrou na sala ${data.code}`);
+    console.log(`Jogador ${data.playerName} entrou na sala ${data.code} como ${player.role}`);
     callback(foundRoom);
+  });
+
+  socket.on('room:update-player-role', (data) => {
+    const room = Array.from(rooms.values()).find(r => r.players.some(p => p.id === socket.id));
+    if (room && room.masterId === socket.id) {
+      const player = room.players.find(p => p.id === data.playerId);
+      if (player) {
+        player.role = data.role;
+        io.to(room.id).emit('room:update', room);
+      }
+    }
+  });
+
+  socket.on('room:set-map', (url) => {
+    const room = Array.from(rooms.values()).find(r => r.players.some(p => p.id === socket.id));
+    if (room && room.masterId === socket.id) {
+      room.mapUrl = url;
+      io.to(room.id).emit('room:update', room);
+    }
   });
 
   socket.on('room:leave', () => {

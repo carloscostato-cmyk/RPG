@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Stage, Layer, Rect, Image, Transformer, Group } from 'react-konva';
+import { Stage, Layer, Rect, Image, Transformer, Group, Text } from 'react-konva';
 import Konva from 'konva';
 import useImage from 'use-image';
 import { Token } from '../../../shared/types';
@@ -20,6 +20,7 @@ const GridCell: React.FC<GridCellProps> = ({ x, y, size }) => (
     stroke="#374151"
     strokeWidth={0.5}
     fill="transparent"
+    listening={false}
   />
 );
 
@@ -28,9 +29,10 @@ interface TokenComponentProps {
   isSelected: boolean;
   onSelect: () => void;
   onChange: (token: Token) => void;
+  isMaster: boolean;
 }
 
-const TokenComponent: React.FC<TokenComponentProps> = ({ token, isSelected, onSelect, onChange }) => {
+const TokenComponent: React.FC<TokenComponentProps> = ({ token, isSelected, onSelect, onChange, isMaster }) => {
   const shapeRef = useRef<Konva.Rect>(null);
   const trRef = useRef<Konva.Transformer>(null);
   const [image] = useImage(token.imageUrl || '');
@@ -42,6 +44,9 @@ const TokenComponent: React.FC<TokenComponentProps> = ({ token, isSelected, onSe
     }
   }, [isSelected]);
 
+  // If token is not visible and current user is not master, don't render
+  if (!token.isVisible && !isMaster) return null;
+
   return (
     <Group>
       <Rect
@@ -51,9 +56,10 @@ const TokenComponent: React.FC<TokenComponentProps> = ({ token, isSelected, onSe
         width={token.width}
         height={token.height}
         fill={token.color || '#ef4444'}
-        stroke="#ffffff"
-        strokeWidth={2}
-        draggable
+        stroke={token.isVisible ? "#ffffff" : "#fbbf24"}
+        strokeWidth={isSelected ? 3 : 2}
+        dash={token.isVisible ? [] : [10, 5]}
+        draggable={isMaster} // Point 10: Only master can move
         onClick={onSelect}
         onTap={onSelect}
         onDragEnd={(e) => {
@@ -65,6 +71,7 @@ const TokenComponent: React.FC<TokenComponentProps> = ({ token, isSelected, onSe
           onChange(newToken);
         }}
         cornerRadius={8}
+        opacity={token.isVisible ? 1 : 0.6}
       />
       
       {token.imageUrl && (
@@ -75,10 +82,23 @@ const TokenComponent: React.FC<TokenComponentProps> = ({ token, isSelected, onSe
           width={token.width}
           height={token.height}
           listening={false}
+          cornerRadius={8}
+          opacity={token.isVisible ? 1 : 0.6}
         />
       )}
 
-      {isSelected && (
+      {!token.isVisible && isMaster && (
+        <Text
+          x={token.x}
+          y={token.y - 15}
+          text="SECRET"
+          fontSize={10}
+          fill="#fbbf24"
+          fontStyle="bold"
+        />
+      )}
+
+      {isSelected && isMaster && ( // Point 10: Only master can edit/transform
         <Transformer
           ref={trRef}
           boundBoxFunc={(oldBox, newBox) => {
@@ -101,6 +121,9 @@ export const GameCanvas: React.FC = () => {
   const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null);
   
   const stageRef = useRef<Konva.Stage>(null);
+  const [mapImage] = useImage(room?.mapUrl || '');
+
+  const isMaster = currentPlayer?.isMaster || false;
 
   const handleWheel = (e: Konva.KonvaEvent<WheelEvent>) => {
     e.evt.preventDefault();
@@ -117,7 +140,7 @@ export const GameCanvas: React.FC = () => {
     };
 
     const newScale = e.evt.deltaY > 0 ? oldScale * 0.9 : oldScale * 1.1;
-    const clampedScale = Math.max(0.25, Math.min(4, newScale));
+    const clampedScale = Math.max(0.1, Math.min(10, newScale));
 
     const newPos = {
       x: pointer.x - mousePointTo.x * clampedScale,
@@ -129,30 +152,37 @@ export const GameCanvas: React.FC = () => {
   };
 
   const handleDragMove = (e: Konva.KonvaEvent<DragEvent>) => {
-    setPosition({
-      x: e.target.x(),
-      y: e.target.y()
-    });
+    // Only update position if we're dragging the stage (not a token)
+    if (e.target instanceof Konva.Stage) {
+      setPosition({
+        x: e.target.x(),
+        y: e.target.y()
+      });
+    }
   };
 
   const handleTokenChange = (token: Token) => {
-    if (socket) {
-      socket.emit('token:move', token);
+    if (socket && isMaster) { // Point 10
+      socket.emit('token:update', token);
     }
   };
 
   const gridCells = [];
-  for (let x = 0; x < 40; x++) {
-    for (let y = 0; y < 30; y++) {
-      gridCells.push(<GridCell key={`${x}-${y}`} x={x} y={y} size={50} />);
+  const gridSize = 50;
+  const gridCountX = 100;
+  const gridCountY = 100;
+
+  for (let x = 0; x < gridCountX; x++) {
+    for (let y = 0; y < gridCountY; y++) {
+      gridCells.push(<GridCell key={`${x}-${y}`} x={x} y={y} size={gridSize} />);
     }
   }
 
   return (
-    <div className="w-full h-full bg-gray-900 overflow-hidden">
+    <div className="w-full h-full bg-black overflow-hidden cursor-grab active:cursor-grabbing">
       <Stage
         ref={stageRef}
-        width={window.innerWidth * 0.7}
+        width={window.innerWidth}
         height={window.innerHeight}
         scaleX={scale}
         scaleY={scale}
@@ -161,12 +191,32 @@ export const GameCanvas: React.FC = () => {
         onWheel={handleWheel}
         draggable
         onDragMove={handleDragMove}
-        onMouseDown={() => setSelectedTokenId(null)}
+        onMouseDown={(e) => {
+          if (e.target === e.target.getStage()) {
+            setSelectedTokenId(null);
+          }
+        }}
       >
+        {/* Map Layer */}
         <Layer>
+           {room?.mapUrl && mapImage && (
+             <Image 
+               image={mapImage}
+               x={0}
+               y={0}
+               width={mapImage.width}
+               height={mapImage.height}
+               listening={false}
+             />
+           )}
+        </Layer>
+
+        {/* Grid Layer */}
+        <Layer opacity={0.3}>
           {gridCells}
         </Layer>
         
+        {/* Tokens Layer */}
         <Layer>
           {Array.from(tokens.values()).map((token) => (
             <TokenComponent
@@ -175,31 +225,40 @@ export const GameCanvas: React.FC = () => {
               isSelected={selectedTokenId === token.id}
               onSelect={() => setSelectedTokenId(token.id)}
               onChange={handleTokenChange}
+              isMaster={isMaster}
             />
           ))}
         </Layer>
       </Stage>
 
-      <div className="absolute bottom-4 right-4 flex flex-col gap-2">
+      {/* Controls */}
+      <div className="absolute bottom-24 right-4 flex flex-col gap-2 z-50">
         <button 
-          onClick={() => setScale(s => Math.min(s + 0.25, 4))}
-          className="bg-gray-800 text-white p-2 rounded-lg shadow-lg hover:bg-gray-700"
+          onClick={() => setScale(s => Math.min(s + 0.5, 10))}
+          className="bg-gray-800/80 backdrop-blur text-white w-10 h-10 rounded-full shadow-xl hover:bg-gray-700 flex items-center justify-center font-bold"
         >
           +
         </button>
         <button 
-          onClick={() => setScale(s => Math.max(s - 0.25, 0.25))}
-          className="bg-gray-800 text-white p-2 rounded-lg shadow-lg hover:bg-gray-700"
+          onClick={() => setScale(s => Math.max(s - 0.5, 0.1))}
+          className="bg-gray-800/80 backdrop-blur text-white w-10 h-10 rounded-full shadow-xl hover:bg-gray-700 flex items-center justify-center font-bold"
         >
           -
         </button>
         <button 
           onClick={() => { setScale(1); setPosition({ x: 0, y: 0 }); }}
-          className="bg-gray-800 text-white p-2 rounded-lg shadow-lg hover:bg-gray-700 text-xs"
+          className="bg-gray-800/80 backdrop-blur text-white w-10 h-10 rounded-full shadow-xl hover:bg-gray-700 flex items-center justify-center text-lg"
         >
           ⟲
         </button>
       </div>
+      
+      {isMaster && (
+        <div className="absolute top-24 left-4 bg-gray-800/80 backdrop-blur p-2 rounded-lg text-xs text-yellow-400 border border-yellow-400/30">
+          MODO MESTRE ATIVO
+        </div>
+      )}
     </div>
   );
+};
 };
