@@ -61,7 +61,22 @@ export const LandingPage: React.FC = () => {
             animate={{ rotate: [0, 5, -5, 0], y: [0, -6, 6, 0] }}
             transition={{ repeat: Infinity, duration: 4, repeatDelay: 2, ease: 'easeInOut' }}
           >
-            <Dice2 size={62} className="text-amber-200 drop-shadow-[0_0_18px_rgba(250,204,21,0.8)]" />
+            {/* Try to load a custom logo from public/logo.png, otherwise fallback to dice icon */}
+            <picture>
+              <img
+                src="/logo.png"
+                alt="Themps NICE GAMES"
+                className="h-20 w-20 object-contain rounded-full drop-shadow-[0_0_18px_rgba(250,204,21,0.8)]"
+                onError={(e) => {
+                  const el = e.currentTarget as HTMLImageElement;
+                  el.style.display = 'none';
+                  // show fallback by leaving empty so Dice2 will be visible
+                }}
+              />
+            </picture>
+            <div className="absolute">
+              <Dice2 size={62} className="text-amber-200 drop-shadow-[0_0_18px_rgba(250,204,21,0.8)]" />
+            </div>
           </motion.div>
 
           <p className="mb-2 text-xs font-bold uppercase tracking-[0.42em] text-cyan-200">
