@@ -1,13 +1,22 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Sun, Moon, Globe, Play, LogIn, Users, Dice2 } from 'lucide-react';
+import { Dice2, Globe, LogIn, Moon, Play, Sun, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '../GameContext';
 
 export const LandingPage: React.FC = () => {
   const navigate = useNavigate();
-  const { createRoom, joinRoom, isDarkMode, toggleDarkMode, language, setLanguage } = useGame();
-  
+  const {
+    createRoom,
+    joinRoom,
+    isDarkMode,
+    toggleDarkMode,
+    language,
+    setLanguage,
+    connectionError,
+    isConnected,
+  } = useGame();
+
   const [mode, setMode] = useState<'create' | 'join'>('create');
   const [playerName, setPlayerName] = useState('');
   const [roomName, setRoomName] = useState('');
@@ -17,78 +26,79 @@ export const LandingPage: React.FC = () => {
 
   const handleCreateRoom = async () => {
     if (!playerName.trim() || !roomName.trim()) return;
-    
     setLoading(true);
     setError('');
-    
+
     const room = await createRoom(roomName, playerName);
-    if (room) {
-      navigate(`/sala/${room.code}`);
-    } else {
-      setError('Erro ao criar sala');
-    }
-    
+    if (room) navigate(`/sala/${room.code}`);
+    else setError('Erro ao criar sala.');
+
     setLoading(false);
   };
 
   const handleJoinRoom = async () => {
     if (!playerName.trim() || !roomCode.trim()) return;
-    
     setLoading(true);
     setError('');
-    
+
     const room = await joinRoom(roomCode, playerName);
-    if (room) {
-      navigate(`/sala/${room.code}`);
-    } else {
-      setError('Sala não encontrada. Verifique o código.');
-    }
-    
+    if (room) navigate(`/sala/${room.code}`);
+    else setError('Sala nao encontrada. Verifique o codigo.');
+
     setLoading(false);
   };
 
   return (
-    <div className={`min-h-screen flex items-center justify-center p-4 ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'}`}>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md"
-      >
-        <div className="text-center mb-8">
-          <motion.div 
-            className="inline-flex items-center justify-center mb-4"
+    <div className={`relative flex min-h-screen items-center justify-center overflow-hidden p-4 ${isDarkMode ? 'landing-arcane-bg text-white' : 'landing-arcane-bg-light text-slate-950'}`}>
+      <div className="arcane-sigil pointer-events-none absolute inset-0 opacity-60" />
+      <div className="pointer-events-none absolute -left-28 top-20 h-72 w-72 rounded-full bg-cyan-300/20 blur-3xl" />
+      <div className="pointer-events-none absolute -right-20 bottom-16 h-80 w-80 rounded-full bg-fuchsia-400/20 blur-3xl" />
+
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="relative z-10 w-full max-w-md">
+        <div className="mb-8 text-center">
+          <motion.div
+            className="mb-5 inline-flex items-center justify-center rounded-full border border-amber-200/50 bg-white/10 p-4 shadow-[0_0_38px_rgba(251,191,36,0.38)] backdrop-blur"
             animate={{ rotate: [0, 5, -5, 0] }}
             transition={{ repeat: Infinity, duration: 4, repeatDelay: 5 }}
           >
-            <Dice2 size={64} className="text-blue-500" />
+            <Dice2 size={62} className="text-amber-200 drop-shadow-[0_0_18px_rgba(250,204,21,0.8)]" />
           </motion.div>
-          
-          <h1 className="text-4xl font-bold mb-2">MESA VIRTUAL RPG</h1>
-          <p className={`text-lg ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-            Jogar nunca foi tão fácil
+
+          <p className="mb-2 text-xs font-bold uppercase tracking-[0.42em] text-cyan-200">
+            Crystal tabletop
+          </p>
+          <h1 className="font-display gold-text mb-3 text-5xl font-extrabold leading-tight drop-shadow-[0_3px_18px_rgba(15,23,42,0.35)]">
+            MESA VIRTUAL RPG
+          </h1>
+          <p className={`text-base font-medium ${isDarkMode ? 'text-cyan-50/80' : 'text-slate-700'}`}>
+            Mesa online para RPG de mesa
           </p>
         </div>
 
-        <div className={`rounded-2xl p-6 shadow-xl ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
-          <div className="flex gap-2 mb-6">
+        <div className={`rounded-2xl border p-6 shadow-2xl backdrop-blur-xl ${
+          isDarkMode
+            ? 'border-amber-200/25 bg-slate-950/70 shadow-fuchsia-950/40'
+            : 'border-white/70 bg-white/72 shadow-sky-200/60'
+        }`}>
+          <div className="mb-6 flex gap-2 rounded-xl border border-white/15 bg-slate-950/20 p-1">
             <button
               onClick={() => setMode('create')}
-              className={`flex-1 py-3 rounded-lg font-medium flex items-center justify-center gap-2 transition ${
+              className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-3 text-sm font-extrabold uppercase tracking-wide transition ${
                 mode === 'create'
-                  ? 'bg-blue-600 text-white'
-                  : isDarkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? 'bg-gradient-to-r from-cyan-400 via-blue-500 to-fuchsia-500 text-white shadow-lg shadow-cyan-500/25'
+                  : isDarkMode ? 'text-cyan-50/70 hover:bg-white/10 hover:text-white' : 'text-slate-600 hover:bg-white/70 hover:text-slate-950'
               }`}
             >
               <Play size={18} />
               Criar Sala
             </button>
-            
+
             <button
               onClick={() => setMode('join')}
-              className={`flex-1 py-3 rounded-lg font-medium flex items-center justify-center gap-2 transition ${
+              className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-3 text-sm font-extrabold uppercase tracking-wide transition ${
                 mode === 'join'
-                  ? 'bg-blue-600 text-white'
-                  : isDarkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? 'bg-gradient-to-r from-fuchsia-500 via-violet-500 to-cyan-400 text-white shadow-lg shadow-fuchsia-500/25'
+                  : isDarkMode ? 'text-cyan-50/70 hover:bg-white/10 hover:text-white' : 'text-slate-600 hover:bg-white/70 hover:text-slate-950'
               }`}
             >
               <LogIn size={18} />
@@ -97,92 +107,88 @@ export const LandingPage: React.FC = () => {
           </div>
 
           <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">Seu Nome</label>
+            <label className="block">
+              <span className={`mb-2 block text-sm font-bold uppercase tracking-wide ${isDarkMode ? 'text-amber-100' : 'text-slate-700'}`}>Seu nome</span>
               <input
                 type="text"
                 value={playerName}
-                onChange={(e) => setPlayerName(e.target.value)}
-                placeholder="Como você quer ser chamado?"
-                className={`w-full rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 transition ${
-                  isDarkMode ? 'bg-gray-700 text-white placeholder-gray-400' : 'bg-gray-100 text-gray-900 placeholder-gray-500'
+                onChange={(event) => setPlayerName(event.target.value)}
+                placeholder="Como voce quer ser chamado?"
+                className={`w-full rounded-lg border px-4 py-3 font-medium outline-none transition focus:ring-2 focus:ring-amber-300 ${
+                  isDarkMode ? 'border-cyan-100/10 bg-slate-900/80 text-white placeholder-cyan-50/40' : 'border-white/80 bg-white/85 text-slate-950 placeholder-slate-500'
                 }`}
               />
-            </div>
+            </label>
 
             {mode === 'create' ? (
-              <div>
-                <label className="block text-sm font-medium mb-2">Nome da Sala</label>
+              <label className="block">
+                <span className={`mb-2 block text-sm font-bold uppercase tracking-wide ${isDarkMode ? 'text-amber-100' : 'text-slate-700'}`}>Nome da sala</span>
                 <input
                   type="text"
                   value={roomName}
-                  onChange={(e) => setRoomName(e.target.value)}
-                  placeholder="Aventura dos Heróis"
-                  className={`w-full rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 transition ${
-                    isDarkMode ? 'bg-gray-700 text-white placeholder-gray-400' : 'bg-gray-100 text-gray-900 placeholder-gray-500'
+                  onChange={(event) => setRoomName(event.target.value)}
+                  placeholder="Aventura dos Herois"
+                  className={`w-full rounded-lg border px-4 py-3 font-medium outline-none transition focus:ring-2 focus:ring-amber-300 ${
+                    isDarkMode ? 'border-cyan-100/10 bg-slate-900/80 text-white placeholder-cyan-50/40' : 'border-white/80 bg-white/85 text-slate-950 placeholder-slate-500'
                   }`}
                 />
-              </div>
+              </label>
             ) : (
-              <div>
-                <label className="block text-sm font-medium mb-2">Código da Sala</label>
+              <label className="block">
+                <span className={`mb-2 block text-sm font-bold uppercase tracking-wide ${isDarkMode ? 'text-amber-100' : 'text-slate-700'}`}>Codigo da sala</span>
                 <input
                   type="text"
                   value={roomCode}
-                  onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-                  placeholder="RPG123"
-                  maxLength={6}
-                  className={`w-full rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 text-center font-mono text-xl uppercase tracking-widest transition ${
-                    isDarkMode ? 'bg-gray-700 text-white placeholder-gray-400' : 'bg-gray-100 text-gray-900 placeholder-gray-500'
+                  onChange={(event) => setRoomCode(event.target.value.toUpperCase())}
+                  placeholder="RPG-ABCD"
+                  maxLength={8}
+                  className={`w-full rounded-lg border px-4 py-3 text-center font-mono text-xl uppercase tracking-widest outline-none transition focus:ring-2 focus:ring-amber-300 ${
+                    isDarkMode ? 'border-cyan-100/10 bg-slate-900/80 text-white placeholder-cyan-50/40' : 'border-white/80 bg-white/85 text-slate-950 placeholder-slate-500'
                   }`}
                 />
-              </div>
+              </label>
             )}
 
-            {error && (
-              <motion.p 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="text-red-500 text-sm text-center"
-              >
-                {error}
-              </motion.p>
+            {(error || connectionError || !isConnected) && (
+              <p className={`rounded-lg px-3 py-2 text-center text-sm ${
+                error ? 'bg-red-500/15 text-red-300' : 'bg-yellow-500/15 text-yellow-300'
+              }`}>
+                {error || connectionError || 'Conectando ao servidor...'}
+              </p>
             )}
 
             <button
               onClick={mode === 'create' ? handleCreateRoom : handleJoinRoom}
-              disabled={loading || !playerName.trim() || (mode === 'create' ? !roomName.trim() : !roomCode.trim())}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 rounded-lg transition flex items-center justify-center gap-2"
+              disabled={loading || !isConnected || !playerName.trim() || (mode === 'create' ? !roomName.trim() : !roomCode.trim())}
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-amber-300 via-pink-500 to-cyan-400 py-4 font-extrabold uppercase tracking-wide text-slate-950 shadow-xl shadow-pink-500/25 transition hover:scale-[1.01] hover:shadow-cyan-400/30 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
             >
-              {loading ? (
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <Users size={20} />
-              )}
-              {mode === 'create' ? 'Criar e Entrar' : 'Entrar na Sala'}
+              {loading ? <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" /> : <Users size={20} />}
+              {mode === 'create' ? 'Criar e entrar' : 'Entrar na sala'}
             </button>
           </div>
         </div>
 
-        <div className="mt-6 flex justify-center items-center gap-4">
+        <div className="mt-6 flex items-center justify-center gap-4">
           <button
             onClick={toggleDarkMode}
-            className={`p-3 rounded-full transition ${isDarkMode ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white hover:bg-gray-100 shadow'}`}
+            className={`rounded-full border p-3 shadow-lg backdrop-blur transition ${isDarkMode ? 'border-amber-200/20 bg-slate-950/70 hover:bg-white/10' : 'border-white/70 bg-white/70 hover:bg-white'}`}
+            title="Alternar tema"
           >
             {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
           </button>
-          
+
           <button
             onClick={() => setLanguage(language === 'pt' ? 'en' : 'pt')}
-            className={`p-3 rounded-full transition ${isDarkMode ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white hover:bg-gray-100 shadow'}`}
+            className={`rounded-full border p-3 shadow-lg backdrop-blur transition ${isDarkMode ? 'border-amber-200/20 bg-slate-950/70 hover:bg-white/10' : 'border-white/70 bg-white/70 hover:bg-white'}`}
+            title="Idioma"
           >
             <Globe size={20} />
             <span className="ml-1 text-sm font-medium">{language.toUpperCase()}</span>
           </button>
         </div>
 
-        <p className={`text-center mt-8 text-sm ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-          Feito com ❤️ para jogadores de RPG
+        <p className={`mt-8 text-center text-sm font-medium ${isDarkMode ? 'text-cyan-50/60' : 'text-slate-600'}`}>
+          Feito para mesas de RPG em tempo real
         </p>
       </motion.div>
     </div>

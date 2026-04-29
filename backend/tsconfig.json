@@ -3,16 +3,16 @@
     "target": "ES2020",
     "module": "CommonJS",
     "outDir": "./dist",
-    "rootDir": "..",
+<<<<<<< HEAD
+    "rootDir": "../",
+=======
+    "rootDir": "../",
+>>>>>>> 99ba59a (Updates: refactor game handlers, update dependencies, improve UI components)
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
-    "baseUrl": ".",
-    "paths": {
-      "@shared/*": ["../shared/*"]
-    }
+    "resolveJsonModule": true
   },
   "include": ["src/**/*", "../shared/**/*"],
   "exclude": ["node_modules"]

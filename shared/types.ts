@@ -1,3 +1,5 @@
+export type PlayerRole = 'master' | 'player';
+
 export interface Room {
   id: string;
   code: string;
@@ -5,16 +7,26 @@ export interface Room {
   masterId: string;
   players: Player[];
   createdAt: number;
+  updatedAt: number;
   mapUrl?: string;
   gridSize: number;
+  settings: RoomSettings;
+}
+
+export interface RoomSettings {
+  allowPlayersMoveOwnTokens: boolean;
+  defaultTurnSeconds: number;
 }
 
 export interface Player {
   id: string;
+  sessionId: string;
   name: string;
+  role: PlayerRole;
   isMaster: boolean;
   connected: boolean;
   characterId?: string;
+  lastSeen: number;
 }
 
 export interface Character {
@@ -31,6 +43,7 @@ export interface Character {
   inventory: Item[];
   spells: Spell[];
   notes: string;
+  updatedAt: number;
 }
 
 export interface Attributes {
@@ -58,6 +71,8 @@ export interface Spell {
 
 export interface Token {
   id: string;
+  roomId: string;
+  ownerId?: string;
   x: number;
   y: number;
   width: number;
@@ -68,6 +83,8 @@ export interface Token {
   layer: 'map' | 'tokens' | 'effects' | 'fog';
   rotation: number;
   color?: string;
+  locked: boolean;
+  updatedAt: number;
 }
 
 export interface MusicTrack {
@@ -78,38 +95,97 @@ export interface MusicTrack {
   isPlaying: boolean;
 }
 
+export interface MusicState {
+  currentTrack: MusicTrack | null;
+  playlist: MusicTrack[];
+  volume: number;
+  isPlaying: boolean;
+  isLooping: boolean;
+  updatedAt: number;
+}
+
 export interface TurnTimer {
   currentPlayerIndex: number;
   timeRemaining: number;
   isRunning: boolean;
   playerOrder: string[];
+  defaultSeconds: number;
+  updatedAt: number;
 }
 
 export interface DiceRoll {
   id: string;
   playerId: string;
+  playerName: string;
   sides: number;
+  modifier: number;
   result: number;
+  total: number;
+  isPrivate: boolean;
   timestamp: number;
 }
 
+export interface ChatMessage {
+  id: string;
+  playerId: string;
+  playerName: string;
+  message: string;
+  timestamp: number;
+}
+
+export interface GameState {
+  room: Room;
+  characters: Character[];
+  tokens: Token[];
+  timer: TurnTimer;
+  music: MusicState;
+  diceRolls: DiceRoll[];
+  chatMessages: ChatMessage[];
+}
+
+export interface ClientIdentity {
+  sessionId: string;
+  playerId: string;
+}
+
+export interface SocketAck<T> {
+  ok: boolean;
+  data?: T;
+  error?: string;
+}
+
 export type SocketEvents = {
-  'room:create': (data: { name: string; playerName: string }, callback: (room: Room) => void) => void;
-  'room:join': (data: { code: string; playerName: string }, callback: (room: Room | null) => void) => void;
+  'room:create': (
+    data: { name: string; playerName: string; sessionId?: string },
+    callback: (response: SocketAck<{ state: GameState; identity: ClientIdentity }>) => void
+  ) => void;
+  'room:join': (
+    data: { code: string; playerName: string; sessionId?: string },
+    callback: (response: SocketAck<{ state: GameState; identity: ClientIdentity }>) => void
+  ) => void;
+  'room:resume': (
+    data: { code: string; sessionId: string; playerId: string },
+    callback: (response: SocketAck<{ state: GameState; identity: ClientIdentity }>) => void
+  ) => void;
   'room:leave': () => void;
   'room:update': (room: Room) => void;
+  'game:state': (state: GameState) => void;
 
   'token:move': (token: Token) => void;
-  'token:add': (token: Token) => void;
+  'token:add': (token: Partial<Token>) => void;
   'token:remove': (tokenId: string) => void;
   'token:update': (token: Token) => void;
 
   'character:update': (character: Character) => void;
-  'dice:roll': (roll: DiceRoll) => void;
+  'dice:roll': (roll: { sides: number; modifier?: number; isPrivate?: boolean }) => void;
+  'dice:rolled': (roll: DiceRoll) => void;
 
-  'music:play': (track: MusicTrack) => void;
+  'music:add': (track: Pick<MusicTrack, 'name' | 'url'>) => void;
+  'music:play': (trackId: string) => void;
   'music:pause': () => void;
   'music:volume': (volume: number) => void;
+  'music:loop': (isLooping: boolean) => void;
+  'music:update': (music: MusicState) => void;
 
   'timer:start': () => void;
   'timer:pause': () => void;
@@ -121,5 +197,7 @@ export type SocketEvents = {
   'player:joined': (player: Player) => void;
   'player:left': (playerId: string) => void;
 
-  'chat:message': (data: { playerId: string; message: string; timestamp: number }) => void;
+  'chat:message': (data: { message: string }) => void;
+  'chat:new': (message: ChatMessage) => void;
+  'error:message': (message: string) => void;
 };

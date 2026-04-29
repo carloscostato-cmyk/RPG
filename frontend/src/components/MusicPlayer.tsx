@@ -1,172 +1,143 @@
-import React, { useState, useEffect } from 'react';
-import { Play, Pause, SkipForward, Plus, Volume2, Music, Repeat } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Music, Pause, Play, Plus, Repeat, Volume2 } from 'lucide-react';
 import { useGame } from '../GameContext';
-import { MusicTrack } from '../../../shared/types';
 
 export const MusicPlayer: React.FC = () => {
-  const { room, currentPlayer, socket } = useGame();
-  const [currentTrack, setCurrentTrack] = useState<MusicTrack | null>(null);
-  const [volume, setVolume] = useState(50);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isLooping, setIsLooping] = useState(false);
-  const [playlist, setPlaylist] = useState<MusicTrack[]>([]);
+  const {
+    currentPlayer,
+    music,
+    currentTrack,
+    addMusicTrack,
+    playMusic,
+    pauseMusic,
+    setMusicLoop,
+    setMusicVolume,
+  } = useGame();
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [newTrackName, setNewTrackName] = useState('');
   const [newTrackUrl, setNewTrackUrl] = useState('');
-
-  const isMaster = currentPlayer?.isMaster;
+  const [audioError, setAudioError] = useState('');
+  const isMaster = Boolean(currentPlayer?.isMaster);
 
   useEffect(() => {
-    if (!socket) return;
+    const audio = audioRef.current;
+    if (!audio || !music) return;
 
-    socket.on('music:play', (track) => {
-      setCurrentTrack(track);
-      setIsPlaying(true);
-    });
+    audio.volume = music.volume / 100;
+    audio.loop = music.isLooping;
 
-    socket.on('music:pause', () => {
-      setIsPlaying(false);
-    });
-
-    socket.on('music:volume', (newVolume) => {
-      setVolume(newVolume);
-    });
-
-    return () => {
-      socket.off('music:play');
-      socket.off('music:pause');
-      socket.off('music:volume');
-    };
-  }, [socket]);
+    if (music.isPlaying && currentTrack?.url) {
+      audio.play().then(() => setAudioError('')).catch(() => {
+        setAudioError('Clique em play para liberar o audio neste navegador.');
+      });
+    } else {
+      audio.pause();
+    }
+  }, [currentTrack?.url, music]);
 
   const addTrack = () => {
-    if (!newTrackUrl || !socket) return;
-    
-    const track: MusicTrack = {
-      id: Date.now().toString(),
-      name: `Música ${playlist.length + 1}`,
-      url: newTrackUrl,
-      volume: volume,
-      isPlaying: false
-    };
-
-    setPlaylist(prev => [...prev, track]);
+    if (!newTrackUrl.trim()) return;
+    addMusicTrack({
+      name: newTrackName.trim() || `Faixa ${(music?.playlist.length || 0) + 1}`,
+      url: newTrackUrl.trim(),
+    });
+    setNewTrackName('');
     setNewTrackUrl('');
   };
 
-  const playTrack = (track: MusicTrack) => {
-    if (!socket || !isMaster) return;
-    socket.emit('music:play', track);
-    setCurrentTrack(track);
-    setIsPlaying(true);
-  };
-
-  const togglePlay = () => {
-    if (!socket || !isMaster) return;
-    
-    if (isPlaying) {
-      socket.emit('music:pause');
-    } else if (currentTrack) {
-      socket.emit('music:play', currentTrack);
-    }
-    setIsPlaying(!isPlaying);
-  };
-
-  const handleVolumeChange = (newVolume: number) => {
-    setVolume(newVolume);
-    if (socket && isMaster) {
-      socket.emit('music:volume', newVolume);
-    }
-  };
-
   return (
-    <div className="bg-gray-800 border-t border-gray-700 p-3">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <Music size={20} className="text-purple-400" />
-            
-            <div className="flex flex-col">
-              {currentTrack ? (
-                <>
-                  <span className="text-white font-medium text-sm flex items-center gap-2">
-                    🎵 Tocando: {currentTrack.name}
-                  </span>
-                  <span className="text-xs text-gray-400 truncate max-w-xs">
-                    {currentTrack.url}
-                  </span>
-                </>
-              ) : (
-                <span className="text-gray-400 text-sm">Nenhuma música tocando</span>
-              )}
-            </div>
+    <div className="border-t border-[#c9a45f]/25 bg-[linear-gradient(180deg,#182132_0%,#0b101a_100%)] p-3 text-[#f6ead0] shadow-[0_-12px_30px_rgba(0,0,0,0.28)]">
+      <audio ref={audioRef} src={currentTrack?.url || undefined} />
+      <div className="mx-auto flex max-w-7xl flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#d7b56d]/40 bg-[#101827] shadow-inner shadow-black/50">
+            <Music size={20} className="text-[#f0d18b]" />
           </div>
-
-          <div className="flex items-center gap-2">
-            {isMaster && (
-              <>
-                <input
-                  type="text"
-                  placeholder="URL YouTube / MP3"
-                  value={newTrackUrl}
-                  onChange={(e) => setNewTrackUrl(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && addTrack()}
-                  className="bg-gray-700 rounded px-3 py-1 text-sm outline-none w-48"
-                />
-                
-                <button 
-                  onClick={addTrack}
-                  className="bg-purple-600 hover:bg-purple-700 p-2 rounded transition"
-                >
-                  <Plus size={16} />
-                </button>
-
-                <button 
-                  onClick={togglePlay}
-                  className="bg-gray-700 hover:bg-gray-600 p-2 rounded transition"
-                >
-                  {isPlaying ? <Pause size={16} /> : <Play size={16} />}
-                </button>
-
-                <button 
-                  onClick={() => setIsLooping(!isLooping)}
-                  className={`p-2 rounded transition ${isLooping ? 'bg-purple-600' : 'bg-gray-700 hover:bg-gray-600'}`}
-                >
-                  <Repeat size={16} />
-                </button>
-
-                <div className="flex items-center gap-1">
-                  <Volume2 size={16} className="text-gray-400" />
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={volume}
-                    onChange={(e) => handleVolumeChange(parseInt(e.target.value))}
-                    className="w-20"
-                  />
-                </div>
-              </>
-            )}
+          <div className="min-w-0">
+            <div className="truncate font-serif text-sm font-semibold tracking-wide text-[#fff3d8]">
+              {currentTrack ? `Tocando: ${currentTrack.name}` : 'Nenhuma musica tocando'}
+            </div>
+            <div className="truncate text-xs text-[#aeb7c8]">
+              {audioError || currentTrack?.url || 'Adicione uma URL direta de audio MP3 ou stream.'}
+            </div>
           </div>
         </div>
 
-        {isMaster && playlist.length > 0 && (
-          <div className="mt-3 flex gap-2 flex-wrap">
-            {playlist.map((track) => (
+        <div className="flex flex-wrap items-center gap-2">
+          {isMaster && (
+            <>
+              <input
+                value={newTrackName}
+                onChange={(event) => setNewTrackName(event.target.value)}
+                placeholder="Nome"
+                className="w-32 rounded-md border border-[#58647a]/55 bg-[#101827] px-3 py-2 text-sm text-[#f6ead0] outline-none placeholder:text-[#7f8796] focus:border-[#f0d18b] focus:ring-2 focus:ring-[#d7b56d]/35"
+              />
+              <input
+                value={newTrackUrl}
+                onChange={(event) => setNewTrackUrl(event.target.value)}
+                onKeyDown={(event) => event.key === 'Enter' && addTrack()}
+                placeholder="URL MP3"
+                className="w-52 rounded-md border border-[#58647a]/55 bg-[#101827] px-3 py-2 text-sm text-[#f6ead0] outline-none placeholder:text-[#7f8796] focus:border-[#f0d18b] focus:ring-2 focus:ring-[#d7b56d]/35"
+              />
               <button
-                key={track.id}
-                onClick={() => playTrack(track)}
-                className={`px-3 py-1 rounded text-sm transition ${
-                  currentTrack?.id === track.id 
-                    ? 'bg-purple-600' 
-                    : 'bg-gray-700 hover:bg-gray-600'
-                }`}
+                onClick={addTrack}
+                className="rounded-md border border-[#f0d18b]/50 bg-[#b8843f] p-2 text-white shadow-md shadow-black/20 transition hover:bg-[#c9934a]"
+                title="Adicionar faixa"
               >
-                {track.name}
+                <Plus size={16} />
               </button>
-            ))}
+              <button
+                onClick={() => currentTrack && music?.isPlaying ? pauseMusic() : currentTrack && playMusic(currentTrack.id)}
+                className="rounded-md border border-[#58647a]/55 bg-[#101827] p-2 text-[#dce6f6] transition hover:border-[#d7b56d] hover:bg-[#1d2b42] hover:text-white"
+                title={music?.isPlaying ? 'Pausar' : 'Tocar'}
+              >
+                {music?.isPlaying ? <Pause size={16} /> : <Play size={16} />}
+              </button>
+              <button
+                onClick={() => setMusicLoop(!music?.isLooping)}
+                className={`rounded-md border p-2 transition ${
+                  music?.isLooping
+                    ? 'border-[#f0d18b] bg-[#b8843f] text-white shadow-[0_0_16px_rgba(216,181,109,0.35)]'
+                    : 'border-[#58647a]/55 bg-[#101827] text-[#dce6f6] hover:border-[#d7b56d] hover:bg-[#1d2b42] hover:text-white'
+                }`}
+                title="Loop"
+              >
+                <Repeat size={16} />
+              </button>
+            </>
+          )}
+          <div className="flex items-center gap-2">
+            <Volume2 size={16} className="text-[#aeb7c8]" />
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={music?.volume || 50}
+              disabled={!isMaster}
+              onChange={(event) => setMusicVolume(Number(event.target.value))}
+              className="h-2 w-24 accent-[#d7b56d]"
+            />
           </div>
-        )}
+        </div>
       </div>
+
+      {isMaster && Boolean(music?.playlist.length) && (
+        <div className="mx-auto mt-3 flex max-w-7xl gap-2 overflow-x-auto border-t border-[#c9a45f]/15 pt-3 pb-1">
+          {music?.playlist.map((track) => (
+            <button
+              key={track.id}
+              onClick={() => playMusic(track.id)}
+              className={`shrink-0 rounded-md border px-3 py-1 text-sm transition ${
+                currentTrack?.id === track.id
+                  ? 'border-[#f0d18b] bg-[#b8843f] text-white shadow-[0_0_14px_rgba(216,181,109,0.25)]'
+                  : 'border-[#58647a]/45 bg-[#101827] text-[#c9d3e5] hover:border-[#d7b56d] hover:bg-[#1d2b42]'
+              }`}
+            >
+              {track.name}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
