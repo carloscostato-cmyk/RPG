@@ -57,16 +57,26 @@ export const LandingPage: React.FC = () => {
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="relative z-10 w-full max-w-md">
         <div className="mb-8 text-center">
           <motion.div
-            className="mb-5 inline-flex items-center justify-center rounded-full border border-amber-200/50 bg-white/10 p-4 shadow-[0_0_38px_rgba(251,191,36,0.38)] backdrop-blur"
-            animate={{ rotate: [0, 5, -5, 0], y: [0, -6, 6, 0] }}
-            transition={{ repeat: Infinity, duration: 4, repeatDelay: 2, ease: 'easeInOut' }}
+            className="mb-5 inline-flex items-center justify-center rounded-full border-2 border-amber-200/50 bg-white/10 p-8 shadow-[0_0_50px_rgba(251,191,36,0.5)] backdrop-blur-md"
+            animate={{ 
+              rotate: [0, 360, 720, 715, 725, 720], 
+              y: [0, -15, 5, -10, 0],
+              scale: [1, 1.1, 0.95, 1.05, 1]
+            }}
+            transition={{ 
+              repeat: Infinity, 
+              duration: 5, 
+              repeatDelay: 1, 
+              ease: 'easeInOut',
+              times: [0, 0.4, 0.6, 0.8, 0.9, 1]
+            }}
           >
             {/* Try to load a custom logo from public/logo.png, otherwise fallback to dice icon */}
             <picture>
               <img
                 src="/logo.png"
-                alt="Themps NICE GAMES"
-                className="h-20 w-20 object-contain rounded-full drop-shadow-[0_0_18px_rgba(250,204,21,0.8)]"
+                alt="Imaginary tables"
+                className="h-32 w-32 object-contain rounded-full drop-shadow-[0_0_25px_rgba(250,204,21,0.9)]"
                 onError={(e) => {
                   const el = e.currentTarget as HTMLImageElement;
                   el.style.display = 'none';
@@ -75,12 +85,12 @@ export const LandingPage: React.FC = () => {
               />
             </picture>
             <div className="absolute">
-              <Dice2 size={62} className="text-amber-200 drop-shadow-[0_0_18px_rgba(250,204,21,0.8)]" />
+              <Dice2 size={96} className="text-amber-200 drop-shadow-[0_0_25px_rgba(250,204,21,0.9)]" />
             </div>
           </motion.div>
 
           <p className="mb-2 text-xs font-bold uppercase tracking-[0.42em] text-cyan-200">
-            Themps NICE GAMES
+            Imaginary tables
           </p>
           <h1 className="font-display gold-text mb-3 text-5xl font-extrabold leading-tight drop-shadow-[0_3px_18px_rgba(15,23,42,0.35)]">
             MESA VIRTUAL RPG

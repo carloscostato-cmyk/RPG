@@ -308,8 +308,64 @@ io.on('connection', (socket) => {
         url,
         volume: state.music.volume,
         isPlaying: false,
+        groupId: track.groupId,
       });
       updateMusic(state, { updatedAt: Date.now() });
+    });
+  });
+
+  socket.on('music:remove', (trackId) => {
+    withMaster(socket, (state) => {
+      state.music.playlist = state.music.playlist.filter((t) => t.id !== trackId);
+      if (state.music.currentTrack?.id === trackId) {
+        state.music.currentTrack = null;
+        state.music.isPlaying = false;
+      }
+      updateMusic(state, { updatedAt: Date.now() });
+    });
+  });
+
+  socket.on('music:rename', (data) => {
+    withMaster(socket, (state) => {
+      const track = state.music.playlist.find((t) => t.id === data.trackId);
+      if (track) {
+        track.name = cleanText(data.name, 60);
+        if (state.music.currentTrack?.id === data.trackId) {
+          state.music.currentTrack.name = track.name;
+        }
+        updateMusic(state, { updatedAt: Date.now() });
+      }
+    });
+  });
+
+  socket.on('music:group:add', (name) => {
+    withMaster(socket, (state) => {
+      state.music.groups.push({
+        id: createId('group'),
+        name: cleanText(name, 50) || 'Novo Grupo',
+      });
+      updateMusic(state, { updatedAt: Date.now() });
+    });
+  });
+
+  socket.on('music:group:remove', (groupId) => {
+    withMaster(socket, (state) => {
+      state.music.groups = state.music.groups.filter((g) => g.id !== groupId);
+      // Opcional: Desvincular faixas do grupo removido
+      state.music.playlist.forEach((t) => {
+        if (t.groupId === groupId) t.groupId = undefined;
+      });
+      updateMusic(state, { updatedAt: Date.now() });
+    });
+  });
+
+  socket.on('music:group:rename', (data) => {
+    withMaster(socket, (state) => {
+      const group = state.music.groups.find((g) => g.id === data.groupId);
+      if (group) {
+        group.name = cleanText(data.name, 50);
+        updateMusic(state, { updatedAt: Date.now() });
+      }
     });
   });
 
@@ -349,6 +405,15 @@ io.on('connection', (socket) => {
     });
   });
 
+  socket.on('timer:setOrder', (order) => {
+    withMaster(socket, (state) => {
+      state.timer.playerOrder = order;
+      state.timer.isManualOrder = true;
+      state.timer.updatedAt = Date.now();
+      saveAndBroadcast(state);
+    });
+  });
+
   socket.on('disconnect', () => {
     console.log(`Client disconnected: ${socket.id}`);
     markDisconnected(socket);
@@ -368,20 +433,22 @@ function createInitialState(room: Room): GameState {
     room,
     characters: [],
     tokens: [],
+    music: {
+      currentTrack: null,
+      playlist: [],
+      groups: [],
+      volume: 50,
+      isPlaying: false,
+      isLooping: false,
+      updatedAt: Date.now(),
+    },
     timer: {
       currentPlayerIndex: 0,
       timeRemaining: room.settings.defaultTurnSeconds,
       isRunning: false,
       playerOrder: room.players.map((player) => player.id),
+      isManualOrder: false,
       defaultSeconds: room.settings.defaultTurnSeconds,
-      updatedAt: Date.now(),
-    },
-    music: {
-      currentTrack: null,
-      playlist: [],
-      volume: 50,
-      isPlaying: false,
-      isLooping: false,
       updatedAt: Date.now(),
     },
     diceRolls: [],
@@ -446,9 +513,25 @@ function saveAndBroadcast(state: GameState) {
 }
 
 function syncTimerOrder(state: GameState) {
-  const connectedIds = state.room.players.filter((player) => player.connected).map((player) => player.id);
-  state.timer.playerOrder = connectedIds;
-  if (state.timer.currentPlayerIndex >= connectedIds.length) state.timer.currentPlayerIndex = 0;
+  const connectedPlayers = state.room.players.filter((p) => p.connected);
+  const connectedIds = connectedPlayers.map((p) => p.id);
+
+  if (!state.timer.isManualOrder) {
+    state.timer.playerOrder = connectedIds;
+  } else {
+    // Se for manual, apenas removemos quem saiu
+    state.timer.playerOrder = state.timer.playerOrder.filter((id) => connectedIds.includes(id));
+    // E adicionamos quem entrou e não está na lista
+    connectedIds.forEach((id) => {
+      if (!state.timer.playerOrder.includes(id)) {
+        state.timer.playerOrder.push(id);
+      }
+    });
+  }
+
+  if (state.timer.currentPlayerIndex >= state.timer.playerOrder.length) {
+    state.timer.currentPlayerIndex = 0;
+  }
 }
 
 function startTimer(state: GameState) {

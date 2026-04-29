@@ -6,6 +6,8 @@ import { CharacterSheet } from '../components/CharacterSheet';
 import { GameCanvas } from '../components/GameCanvas';
 import { MusicPlayer } from '../components/MusicPlayer';
 import { TurnTimer } from '../components/TurnTimer';
+import { TurnNotification } from '../components/TurnNotification';
+import { DiceOverlay } from '../components/DiceOverlay';
 import { useGame } from '../GameContext';
 
 export const GameRoom: React.FC = () => {
@@ -46,6 +48,8 @@ export const GameRoom: React.FC = () => {
       }`}
     >
       <TurnTimer />
+      <TurnNotification />
+      <DiceOverlay />
 
       {(connectionError || !isConnected) && (
         <div className="border-b border-amber-300 bg-amber-400 px-4 py-2 text-center text-sm font-semibold text-slate-950 shadow-[0_0_24px_rgba(251,191,36,0.45)]">

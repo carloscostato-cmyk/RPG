@@ -44,16 +44,22 @@ interface GameContextType {
   moveToken: (token: Token) => void;
   removeToken: (tokenId: string) => void;
   updateCharacter: (character: Character) => void;
-  addMusicTrack: (track: Pick<MusicTrack, 'name' | 'url'>) => void;
+  addMusicTrack: (track: Pick<MusicTrack, 'name' | 'url' | 'groupId'>) => void;
   playMusic: (trackId: string) => void;
   pauseMusic: () => void;
   setMusicVolume: (volume: number) => void;
   setMusicLoop: (isLooping: boolean) => void;
+  removeMusicTrack: (trackId: string) => void;
+  renameMusicTrack: (trackId: string, name: string) => void;
+  addMusicGroup: (name: string) => void;
+  removeMusicGroup: (groupId: string) => void;
+  renameMusicGroup: (groupId: string, name: string) => void;
   startTimer: () => void;
   pauseTimer: () => void;
   resetTimer: () => void;
   nextTurn: () => void;
   extendTimer: (seconds: number) => void;
+  setTimerOrder: (order: string[]) => void;
   toggleDarkMode: () => void;
   setLanguage: (lang: 'pt' | 'en') => void;
 }
@@ -198,11 +204,17 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     pauseMusic: () => emit('music:pause'),
     setMusicVolume: (volume) => emit('music:volume', volume),
     setMusicLoop: (isLooping) => emit('music:loop', isLooping),
+    removeMusicTrack: (trackId) => emit('music:remove', trackId),
+    renameMusicTrack: (trackId, name) => emit('music:rename', { trackId, name }),
+    addMusicGroup: (name) => emit('music:group:add', name),
+    removeMusicGroup: (groupId) => emit('music:group:remove', groupId),
+    renameMusicGroup: (groupId, name) => emit('music:group:rename', { groupId, name }),
     startTimer: () => emit('timer:start'),
     pauseTimer: () => emit('timer:pause'),
     resetTimer: () => emit('timer:reset'),
     nextTurn: () => emit('timer:next'),
     extendTimer: (seconds) => emit('timer:extend', seconds),
+    setTimerOrder: (order) => emit('timer:setOrder', order),
     toggleDarkMode: () => setIsDarkMode((previous) => !previous),
     setLanguage,
   };

@@ -1,4 +1,4 @@
-# Themps NICE GAMES
+# Imaginary tables
 
 Mesa virtual para RPG com React, Socket.io, mapa em canvas, fichas, dados, chat, timer e player de audio por sala.
 
@@ -59,7 +59,6 @@ npm install
 
 ## Rodar em desenvolvimento
 
-<<<<<<< HEAD
 ### 3. Configure as variáveis de ambiente
 ```bash
 cp .env.example .env
@@ -79,8 +78,7 @@ git push origin main
 ```
 
 ### 4. Inicie o ambiente de desenvolvimento
-=======
->>>>>>> 99ba59a (Updates: refactor game handlers, update dependencies, improve UI components)
+
 ```bash
 npm run dev
 ```
@@ -89,7 +87,6 @@ npm run dev
 - Backend: http://localhost:3001
 - Healthcheck: http://localhost:3001/health
 
-<<<<<<< HEAD
 ## 🎮 Como abrir e jogar
 
 Se você quiser iniciar sem lembrar comandos, use o arquivo `START-APLICACAO.bat` na pasta raiz do projeto.
@@ -103,9 +100,8 @@ Passo a passo:
 Esse arquivo usa `C:\Projects\RPG` quando disponível e só instala dependências na primeira execução.
 
 ---
-=======
-No Windows, tambem e possivel abrir `JOGAR.bat`.
->>>>>>> 99ba59a (Updates: refactor game handlers, update dependencies, improve UI components)
+No Windows, também é possível abrir `JOGAR.bat`.
+
 
 ## Build e testes
 
@@ -128,7 +124,6 @@ Principais variaveis:
 - `DATA_DIR`: pasta da persistencia local. Padrao: `data`.
 - `ROOM_TTL_HOURS`: horas para limpeza de salas inativas. Padrao: `24`.
 
-<<<<<<< HEAD
 ## 🪟 Atalho no Windows
 
 Se estiver no Windows, o jeito mais simples é manter o projeto em `C:\Projects\RPG` e usar o atalho:
@@ -138,9 +133,8 @@ START-APLICACAO.bat
 ```
 
 ---
-=======
-As variaveis Firebase permanecem documentadas para a proxima etapa de persistencia em nuvem.
->>>>>>> 99ba59a (Updates: refactor game handlers, update dependencies, improve UI components)
+As variáveis Firebase permanecem documentadas para a próxima etapa de persistência em nuvem.
+
 
 ## Deploy
 

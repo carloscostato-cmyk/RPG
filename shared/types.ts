@@ -93,11 +93,18 @@ export interface MusicTrack {
   url: string;
   volume: number;
   isPlaying: boolean;
+  groupId?: string; // NOVO: Relacionamento com grupo
+}
+
+export interface MusicGroup {
+  id: string;
+  name: string;
 }
 
 export interface MusicState {
   currentTrack: MusicTrack | null;
   playlist: MusicTrack[];
+  groups: MusicGroup[]; // NOVO: Lista de grupos (Locais/Etapas)
   volume: number;
   isPlaying: boolean;
   isLooping: boolean;
@@ -109,6 +116,7 @@ export interface TurnTimer {
   timeRemaining: number;
   isRunning: boolean;
   playerOrder: string[];
+  isManualOrder: boolean; // NOVO: Se o mestre definiu a ordem manualmente
   defaultSeconds: number;
   updatedAt: number;
 }
@@ -180,18 +188,24 @@ export type SocketEvents = {
   'dice:roll': (roll: { sides: number; modifier?: number; isPrivate?: boolean }) => void;
   'dice:rolled': (roll: DiceRoll) => void;
 
-  'music:add': (track: Pick<MusicTrack, 'name' | 'url'>) => void;
+  'music:add': (track: Pick<MusicTrack, 'name' | 'url' | 'groupId'>) => void;
   'music:play': (trackId: string) => void;
   'music:pause': () => void;
   'music:volume': (volume: number) => void;
   'music:loop': (isLooping: boolean) => void;
   'music:update': (music: MusicState) => void;
+  'music:remove': (trackId: string) => void; // NOVO
+  'music:rename': (data: { trackId: string; name: string }) => void; // NOVO
+  'music:group:add': (name: string) => void; // NOVO
+  'music:group:remove': (groupId: string) => void; // NOVO
+  'music:group:rename': (data: { groupId: string; name: string }) => void; // NOVO
 
   'timer:start': () => void;
   'timer:pause': () => void;
   'timer:reset': () => void;
   'timer:next': () => void;
   'timer:extend': (seconds: number) => void;
+  'timer:setOrder': (playerOrder: string[]) => void; // NOVO
   'timer:update': (timer: TurnTimer) => void;
 
   'player:joined': (player: Player) => void;
@@ -201,3 +215,4 @@ export type SocketEvents = {
   'chat:new': (message: ChatMessage) => void;
   'error:message': (message: string) => void;
 };
+
