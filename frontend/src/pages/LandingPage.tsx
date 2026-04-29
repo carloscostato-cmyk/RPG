@@ -213,7 +213,7 @@ export const LandingPage: React.FC = () => {
         </div>
 
         <p className={`mt-8 text-center text-sm font-medium ${isDarkMode ? 'text-cyan-50/60' : 'text-slate-600'}`}>
-          Feito para mesas de RPG em tempo real
+          Desenvolvido por Costato’s NetWork - a Deus toda a Honra e Glória
         </p>
       </motion.div>
     </div>
