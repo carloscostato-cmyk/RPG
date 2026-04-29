@@ -20,9 +20,11 @@ jobs:
         run: npm ci
         working-directory: backend
 
+      - name: Typecheck workspace
+        run: npm test
+
       - name: Build backend
-        run: npm run build
-        working-directory: backend
+        run: npm run build:backend
 
       - name: Install Railway CLI
         run: npm install -g @railway/cli
