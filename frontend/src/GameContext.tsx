@@ -60,6 +60,7 @@ interface GameContextType {
   nextTurn: () => void;
   extendTimer: (seconds: number) => void;
   setTimerOrder: (order: string[]) => void;
+  updateRoom: (updates: Partial<Room>) => void;
   toggleDarkMode: () => void;
   setLanguage: (lang: 'pt' | 'en') => void;
 }
@@ -192,7 +193,20 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     createRoom,
     joinRoom,
     leaveRoom,
-    sendMessage: (message) => emit('chat:message', { message }),
+    sendMessage: (message) => {
+      const rollMatch = message.match(/^[\/|+](roll|rolar)\s+(\d+)?d(\d+)([\+\-]\d+)?/i);
+      if (rollMatch) {
+        const count = parseInt(rollMatch[2] || '1');
+        const sides = parseInt(rollMatch[3]);
+        const modifier = parseInt(rollMatch[4] || '0');
+        
+        for (let i = 0; i < count; i++) {
+          emit('dice:roll', { sides, modifier });
+        }
+        return;
+      }
+      emit('chat:message', { message });
+    },
     rollDice: (sides, modifier = 0, isPrivate = false) => emit('dice:roll', { sides, modifier, isPrivate }),
     addToken: (token = {}) => emit('token:add', token),
     updateToken: (token) => emit('token:update', token),
@@ -215,6 +229,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     nextTurn: () => emit('timer:next'),
     extendTimer: (seconds) => emit('timer:extend', seconds),
     setTimerOrder: (order) => emit('timer:setOrder', order),
+    updateRoom: (updates) => emit('room:update', updates),
     toggleDarkMode: () => setIsDarkMode((previous) => !previous),
     setLanguage,
   };

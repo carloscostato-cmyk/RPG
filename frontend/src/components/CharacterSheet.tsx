@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import type { Attributes, Character, Item, Spell } from '../../../shared/types';
 import { useGame } from '../GameContext';
 
-type Tab = 'attributes' | 'inventory' | 'spells' | 'notes';
+type Tab = 'attributes' | 'inventory' | 'spells' | 'notes' | 'notion';
 type AttributeKey = keyof Attributes;
 
 const attributes: Array<{ key: AttributeKey; label: string; full: string }> = [
@@ -20,9 +20,13 @@ export const CharacterSheet: React.FC = () => {
   const { currentPlayer, characters, room, updateCharacter, rollDice, isDarkMode } = useGame();
   const [activeTab, setActiveTab] = useState<Tab>('attributes');
 
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
+
+  const activeCharacterOwnerId = currentPlayer?.isMaster ? (selectedPlayerId || currentPlayer?.id) : currentPlayer?.id;
+
   const savedCharacter = useMemo(() => {
-    return Array.from(characters.values()).find((character) => character.ownerId === currentPlayer?.id) || null;
-  }, [characters, currentPlayer?.id]);
+    return Array.from(characters.values()).find((character) => character.ownerId === activeCharacterOwnerId) || null;
+  }, [characters, activeCharacterOwnerId]);
 
   const [draft, setDraft] = useState<Character>(() => createBlankCharacter(room?.id || '', currentPlayer?.id || ''));
 
@@ -43,6 +47,7 @@ export const CharacterSheet: React.FC = () => {
     { id: 'inventory' as Tab, icon: <Backpack size={18} />, label: 'Itens' },
     { id: 'spells' as Tab, icon: <Sparkles size={18} />, label: 'Magias' },
     { id: 'notes' as Tab, icon: <FileText size={18} />, label: 'Notas' },
+    { id: 'notion' as Tab, icon: <FileText size={18} />, label: 'Notion' },
   ];
 
   if (!currentPlayer || !room) {
@@ -65,6 +70,21 @@ export const CharacterSheet: React.FC = () => {
           : 'bg-[linear-gradient(145deg,#fff8e9_0%,#eef3fb_52%,#e8edf6_100%)] text-[#172033]'
       }`}
     >
+      {currentPlayer.isMaster && (
+        <div className="flex items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/5 p-2">
+          <span className="text-[10px] font-bold text-amber-400">VER FICHA DE:</span>
+          <select 
+            value={selectedPlayerId || currentPlayer.id}
+            onChange={(e) => setSelectedPlayerId(e.target.value)}
+            className="flex-1 bg-transparent text-xs font-bold text-white outline-none"
+          >
+            {room.players.map(p => (
+              <option key={p.id} value={p.id} className="bg-slate-900">{p.name} {p.id === currentPlayer.id ? '(Você)' : ''}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
       <div className="flex gap-3 rounded-lg border border-[#c9a45f]/25 bg-[#182132]/90 p-3 shadow-xl shadow-black/30">
         <label className="flex h-16 w-16 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg border border-[#d7b56d]/40 bg-[#0f1724] shadow-inner shadow-black/50 transition hover:border-[#f0d18b] hover:bg-[#18243a]">
           {draft.avatarUrl ? (
@@ -218,13 +238,26 @@ export const CharacterSheet: React.FC = () => {
           />
         )}
 
-        {activeTab === 'notes' && (
-          <textarea
-            value={draft.notes}
-            onChange={(event) => save({ notes: event.target.value })}
-            placeholder="Anotacoes do personagem..."
-            className="h-full min-h-[260px] w-full resize-none rounded-lg border border-[#c9a45f]/25 bg-[#101827]/95 p-3 text-sm leading-relaxed text-[#f6ead0] outline-none placeholder:text-[#7f8796] focus:border-[#f0d18b] focus:ring-2 focus:ring-[#d7b56d]/35"
-          />
+        {activeTab === 'notion' && (
+          <div className="flex h-full flex-col gap-2">
+            <input 
+              placeholder="Cole o link público do Notion aqui..."
+              value={draft.notionUrl || ''}
+              onChange={(e) => save({ notionUrl: e.target.value })}
+              className="w-full rounded border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white outline-none focus:border-cyan-400"
+            />
+            {draft.notionUrl ? (
+              <iframe 
+                src={draft.notionUrl.replace('notion.so', 'notion.site')} 
+                className="flex-1 rounded-lg border border-white/5 bg-white"
+                title="Notion Sheet"
+              />
+            ) : (
+              <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed border-white/10 text-center text-xs text-slate-500">
+                Aba Notion vazia.<br/>Cole um link para visualizar sua ficha externa.
+              </div>
+            )}
+          </div>
         )}
       </div>
     </div>
@@ -324,6 +357,7 @@ function createBlankCharacter(roomId: string, ownerId: string): Character {
     inventory: [],
     spells: [],
     notes: '',
+    notionUrl: '',
     updatedAt: Date.now(),
   };
 }

@@ -203,6 +203,68 @@ export const GameCanvas: React.FC = () => {
     );
   }, [gridSize, isDarkMode]);
 
+  const [lastCenter, setLastCenter] = useState<{ x: number; y: number } | null>(null);
+  const [lastDist, setLastDist] = useState<number>(0);
+
+  const getDistance = (p1: { x: number; y: number }, p2: { x: number; y: number }) => {
+    return Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
+  };
+
+  const getCenter = (p1: { x: number; y: number }, p2: { x: number; y: number }) => {
+    return {
+      x: (p1.x + p2.x) / 2,
+      y: (p1.y + p2.y) / 2,
+    };
+  };
+
+  const handleTouchMove = (e: Konva.KonvaEventObject<TouchEvent>) => {
+    e.evt.preventDefault();
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    const touch1 = e.evt.touches[0];
+    const touch2 = e.evt.touches[1];
+
+    if (touch1 && touch2) {
+      // Pinch zoom
+      const p1 = { x: touch1.clientX, y: touch1.clientY };
+      const p2 = { x: touch2.clientX, y: touch2.clientY };
+
+      if (!lastCenter) {
+        setLastCenter(getCenter(p1, p2));
+        setLastDist(getDistance(p1, p2));
+        return;
+      }
+
+      const newDist = getDistance(p1, p2);
+      const newCenter = getCenter(p1, p2);
+
+      const oldScale = scale;
+      const pointer = stage.getPointerPosition() || newCenter;
+      
+      const mousePointTo = {
+        x: (pointer.x - position.x) / oldScale,
+        y: (pointer.y - position.y) / oldScale,
+      };
+
+      const newScale = Math.max(0.25, Math.min(4, oldScale * (newDist / lastDist)));
+      
+      setScale(newScale);
+      setPosition({
+        x: pointer.x - mousePointTo.x * newScale,
+        y: pointer.y - mousePointTo.y * newScale,
+      });
+
+      setLastDist(newDist);
+      setLastCenter(newCenter);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setLastCenter(null);
+    setLastDist(0);
+  };
+
   const handleWheel = (event: Konva.KonvaEventObject<WheelEvent>) => {
     event.evt.preventDefault();
     const stage = stageRef.current;
@@ -252,11 +314,25 @@ export const GameCanvas: React.FC = () => {
         scaleY={scale}
         x={position.x}
         y={position.y}
-        draggable
-        onDragMove={(event) => setPosition({ x: event.target.x(), y: event.target.y() })}
+        draggable={!selectedTokenId}
+        onDragMove={(event) => {
+          if (event.target === stageRef.current) {
+            setPosition({ x: event.target.x(), y: event.target.y() });
+          }
+        }}
         onWheel={handleWheel}
-        onMouseDown={() => setSelectedTokenId(null)}
-        onTap={() => setSelectedTokenId(null)}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onMouseDown={(e) => {
+          if (e.target === stageRef.current) {
+            setSelectedTokenId(null);
+          }
+        }}
+        onTap={(e) => {
+          if (e.target === stageRef.current) {
+            setSelectedTokenId(null);
+          }
+        }}
       >
         <Layer>{magicMarks}</Layer>
         <Layer>{gridCells}</Layer>
@@ -349,12 +425,30 @@ export const GameCanvas: React.FC = () => {
             )}
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <input
-              value={selectedToken.imageUrl || ''}
-              onChange={(event) => updateSelectedToken({ imageUrl: event.target.value })}
-              placeholder="URL da imagem"
-              className="col-span-2 rounded border border-white/10 bg-slate-900 px-3 py-2 text-sm outline-none placeholder:text-slate-500 focus:border-cyan-300 focus:ring-2 focus:ring-cyan-400/40"
-            />
+            <div className="col-span-2 flex gap-2">
+              <input
+                value={selectedToken.imageUrl || ''}
+                onChange={(event) => updateSelectedToken({ imageUrl: event.target.value })}
+                placeholder="URL da imagem"
+                className="min-w-0 flex-1 rounded border border-white/10 bg-slate-900 px-3 py-2 text-sm outline-none placeholder:text-slate-500 focus:border-cyan-300 focus:ring-2 focus:ring-cyan-400/40"
+              />
+              <label className="flex cursor-pointer items-center justify-center rounded border border-cyan-500/30 bg-cyan-500/10 px-3 text-xs font-bold text-cyan-300 hover:bg-cyan-500/20">
+                SUBIR
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  className="hidden" 
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onloadend = () => updateSelectedToken({ imageUrl: reader.result as string });
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                />
+              </label>
+            </div>
             <input
               type="color"
               value={selectedToken.color || '#ef4444'}
