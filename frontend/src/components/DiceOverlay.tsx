@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGame } from '../GameContext';
-import { DiceRoll } from '../../shared/types';
+import { DiceRoll } from '@shared/types';
 
 export const DiceOverlay: React.FC = () => {
   const { socket } = useGame();

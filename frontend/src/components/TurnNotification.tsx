@@ -4,7 +4,7 @@ import { useGame } from '../GameContext';
 import { Bell } from 'lucide-react';
 
 export const TurnNotification: React.FC = () => {
-  const { timer, currentPlayer, room } = useGame();
+  const { timer, currentPlayer } = useGame();
   const [show, setShow] = useState(false);
 
   const currentTurnPlayerId = timer?.playerOrder[timer.currentPlayerIndex];

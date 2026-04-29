@@ -19,7 +19,6 @@ export const MusicPlayer: React.FC = () => {
     renameMusicTrack,
     addMusicGroup,
     removeMusicGroup,
-    renameMusicGroup
   } = useGame();
 
   const audioRef = useRef<HTMLAudioElement>(null);

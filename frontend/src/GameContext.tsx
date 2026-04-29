@@ -13,7 +13,7 @@ import type {
   SocketEvents,
   Token,
   TurnTimer,
-} from '../../shared/types';
+} from '@shared/types';
 
 type ClientSocket = Socket<SocketEvents, SocketEvents>;
 
