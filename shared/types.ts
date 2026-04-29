@@ -16,6 +16,7 @@ export interface Room {
 export interface RoomSettings {
   allowPlayersMoveOwnTokens: boolean;
   defaultTurnSeconds: number;
+  timerEnabled: boolean;
 }
 
 export interface Player {
@@ -43,6 +44,7 @@ export interface Character {
   inventory: Item[];
   spells: Spell[];
   notes: string;
+  notionUrl?: string;
   updatedAt: number;
 }
 
@@ -176,7 +178,7 @@ export type SocketEvents = {
     callback: (response: SocketAck<{ state: GameState; identity: ClientIdentity }>) => void
   ) => void;
   'room:leave': () => void;
-  'room:update': (room: Room) => void;
+  'room:update': (room: Partial<Room>) => void;
   'game:state': (state: GameState) => void;
 
   'token:move': (token: Token) => void;

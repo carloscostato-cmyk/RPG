@@ -11,7 +11,7 @@ import { useGame } from '../GameContext';
 
 export const GameRoom: React.FC = () => {
   const navigate = useNavigate();
-  const { code } = useParams<{ code: string }>();
+  const { code: _unusedCode } = useParams<{ code: string }>();
   const {
     room,
     currentPlayer,
@@ -23,6 +23,7 @@ export const GameRoom: React.FC = () => {
     connectionError,
     isConnected,
     isDarkMode,
+    updateRoom,
   } = useGame();
   
   const [mobileTab, setMobileTab] = useState<'sheet' | 'chat' | 'dice'>('sheet');
