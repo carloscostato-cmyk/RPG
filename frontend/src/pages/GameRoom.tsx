@@ -16,7 +16,7 @@ const MusicPlayer = lazy(async () => {
 
 export const GameRoom: React.FC = () => {
   const navigate = useNavigate();
-  const { code: _unusedCode } = useParams<{ code: string }>();
+  const { code } = useParams<{ code: string }>();
   const {
     room,
     currentPlayer,
@@ -74,10 +74,12 @@ export const GameRoom: React.FC = () => {
         <main className="relative h-[50vh] min-w-0 flex-1 overflow-hidden md:h-auto">
           <GameCanvas />
 
-          {room?.code && (
-            <div className="pointer-events-none absolute left-1/2 top-4 z-30 -translate-x-1/2 rounded-xl border border-cyan-300/40 bg-slate-950/80 px-4 py-2 text-center shadow-[0_0_20px_rgba(34,211,238,0.25)] backdrop-blur">
-              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-cyan-200/80">Codigo da Sala</p>
-              <p className="font-mono text-base font-black tracking-widest text-cyan-200">{room.code}</p>
+          {code && (
+            <div className="pointer-events-auto absolute left-1/2 top-4 z-30 -translate-x-1/2 rounded-xl border border-cyan-300/40 bg-slate-950/80 px-4 py-2 text-center shadow-[0_0_20px_rgba(34,211,238,0.25)] backdrop-blur cursor-pointer hover:bg-slate-900/90 transition" onClick={() => {
+              navigator.clipboard.writeText(code);
+            }}>
+              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-cyan-200/80">Codigo da Sala (clique para copiar)</p>
+              <p className="font-mono text-base font-black tracking-widest text-cyan-200">{code}</p>
             </div>
           )}
           

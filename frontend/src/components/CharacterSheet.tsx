@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { Backpack, Dice5, FileText, Plus, Sparkles, Trash2, Upload, User } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { Attributes, Character, Item, Spell } from '../../../shared/types';
@@ -30,18 +30,36 @@ export const CharacterSheet: React.FC = () => {
   }, [characters, activeCharacterOwnerId]);
 
   const [draft, setDraft] = useState<Character>(() => createBlankCharacter(room?.id || '', currentPlayer?.id || ''));
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    if (savedCharacter) setDraft(savedCharacter);
-    else setDraft(createBlankCharacter(room?.id || '', currentPlayer?.id || ''));
-  }, [currentPlayer?.id, room?.id, savedCharacter]);
+    if (savedCharacter) {
+      setDraft(savedCharacter);
+    } else {
+      setDraft(createBlankCharacter(room?.id || '', currentPlayer?.id || ''));
+    }
+  }, [currentPlayer?.id, room?.id]);
 
   const save = (updates: Partial<Character>) => {
     if (isSpectator) return;
     const next = { ...draft, ...updates, roomId: room?.id || draft.roomId, ownerId: currentPlayer?.id || draft.ownerId };
     setDraft(next);
-    if (currentPlayer && room) updateCharacter(next);
+
+    // Debounce 700ms: só salva no servidor depois que parar de digitar
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    
+    saveTimeoutRef.current = setTimeout(() => {
+      if (currentPlayer && room) {
+        updateCharacter(next);
+      }
+    }, 700);
   };
+
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    };
+  }, []);
 
   const getModifier = (value: number) => Math.floor((value - 10) / 2);
   const tabs = [
