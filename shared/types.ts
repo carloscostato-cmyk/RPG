@@ -33,6 +33,8 @@ export interface Character {
   inventory: Item[];
   spells: Spell[];
   notes: string;
+  createdAt: number;
+  updatedAt?: number;
 }
 
 export interface Attributes {
