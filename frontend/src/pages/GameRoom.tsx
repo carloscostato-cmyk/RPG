@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { X, Dice5, LogOut, Settings, Users, Map as MapIcon, Plus, EyeOff, UserCheck, Shield } from 'lucide-react';
+import { X, Dice5, LogOut, Users, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GameCanvas } from '../components/GameCanvas';
 import { CharacterSheet } from '../components/CharacterSheet';
