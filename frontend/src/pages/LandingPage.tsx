@@ -35,7 +35,7 @@ export const LandingPage: React.FC = () => {
     setLoading(true);
     setError('');
     // Master role is forced on backend, so we don't pass 'role' choice here
-    const room = await createRoom(roomName, playerName, 'player'); 
+    const room = await createRoom(roomName, playerName); 
     if (room) {
       navigate(`/sala/${room.code}`);
     } else {
@@ -52,7 +52,7 @@ export const LandingPage: React.FC = () => {
     setLoading(true);
     setError('');
     try {
-      const room = await joinRoom(roomCode, playerName, role);
+      const room = await joinRoom(roomCode, playerName);
       if (room) {
         navigate(`/sala/${room.code}`);
       } else {

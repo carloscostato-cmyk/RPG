@@ -159,7 +159,7 @@ export const CharacterSheet: React.FC = () => {
         {[4, 6, 8, 10, 12, 20, 100].map((sides) => (
           <button
             key={sides}
-            onClick={() => rollDice(`1d${sides}`)}
+            onClick={() => rollDice(sides)}
             className="flex-1 rounded-md border border-[#d7b56d]/30 bg-[#1a2639] px-2 py-2 text-xs font-bold text-[#f6ead0] shadow-md shadow-black/20 transition hover:border-[#f0d18b] hover:bg-[#24344f] hover:text-white"
           >
             d{sides}
@@ -195,7 +195,7 @@ export const CharacterSheet: React.FC = () => {
                   <div className="mb-1 flex items-center justify-between text-xs">
                     <span title={attribute.full} className="font-serif font-semibold tracking-wide text-[#f0d18b]">{attribute.label}</span>
                     <button
-                      onClick={() => rollDice(`1d20${modifier >= 0 ? '+' : ''}${modifier}`)}
+                      onClick={() => rollDice(20, modifier)}
                       className="flex items-center gap-1 rounded-md border border-[#ef7f6f]/40 bg-[#7f2530] px-2 py-1 text-white transition hover:bg-[#a2323f]"
                     >
                       <Dice5 size={12} />
