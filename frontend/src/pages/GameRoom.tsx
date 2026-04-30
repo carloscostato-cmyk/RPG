@@ -6,7 +6,6 @@ import { GameCanvas } from '../components/GameCanvas';
 import { CharacterSheet } from '../components/CharacterSheet';
 import { TurnTimer } from '../components/TurnTimer';
 import { MusicPlayer } from '../components/MusicPlayer';
-import { DiceRollLog } from '../components/DiceRollLog';
 import { useGame } from '../GameContext';
 import { Token } from '../../../shared/types';
 
@@ -86,18 +85,14 @@ export const GameRoom: React.FC = () => {
         <main className="flex-1 relative bg-black overflow-hidden">
           <GameCanvas />
 
-          {/* DICE LOG & FABs */}
-          <div className="absolute top-4 left-4 z-40 w-64 pointer-events-none">
-            <DiceRollLog />
-          </div>
 
           <div className="absolute bottom-6 left-6 flex flex-col gap-3 z-40">
-            <button onClick={() => rollDice('1d20')} className="w-12 h-12 bg-red-600 rounded-lg shadow-lg flex items-center justify-center hover:bg-red-500 transition-all active:scale-90">
+            <button onClick={() => rollDice(20)} className="w-12 h-12 bg-red-600 rounded-lg shadow-lg flex items-center justify-center hover:bg-red-500 transition-all active:scale-90">
               <Dice5 size={24} color="white" />
             </button>
             <button onClick={() => {
-              const n = prompt('Rolagem (ex: 2d20+5):', '1d20');
-              if(n) rollDice(n);
+              const n = prompt('Número de lados (ex: 20):', '20');
+              if(n) rollDice(parseInt(n));
             }} className="w-12 h-12 bg-gray-800 rounded-lg shadow-lg flex items-center justify-center hover:bg-gray-700 border border-white/10 transition-all active:scale-90">
               <Plus size={24} color="white" />
             </button>

@@ -9,7 +9,7 @@ export const TurnTimer: React.FC = () => {
   const [tempOrder, setTempOrder] = useState<string[]>([]);
 
   const isMaster = Boolean(currentPlayer?.isMaster);
-  const timerVisible = room?.settings?.timerEnabled ?? true;
+  const timerVisible = true;
   const players = room?.players.filter((player) => player.connected) || [];
   const currentTurnPlayerId = timer?.playerOrder[timer.currentPlayerIndex];
   const currentTurnPlayer = players.find((player) => player.id === currentTurnPlayerId);

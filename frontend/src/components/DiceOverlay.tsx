@@ -15,9 +15,9 @@ export const DiceOverlay: React.FC = () => {
       setTimeout(() => setActiveRoll(null), 4000);
     };
 
-    socket.on('dice:roll', handleRoll);
+    socket.on('dice:rolled', handleRoll);
     return () => {
-      socket.off('dice:roll', handleRoll);
+      socket.off('dice:rolled', handleRoll);
     };
   }, [socket]);
 

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { Room, Player, Character, Token, MusicTrack, TurnTimer, DiceRoll, SocketEvents } from '../../shared/types';
+import { Room, Player, Character, Token, MusicTrack, TurnTimer, DiceRoll, SocketEvents, GameState, ClientIdentity, SocketAck } from '../../shared/types';
 
 interface GameContextType {
   socket: Socket<SocketEvents> | null;
@@ -14,11 +14,11 @@ interface GameContextType {
   isDarkMode: boolean;
   language: 'pt' | 'en';
   
-  createRoom: (name: string, playerName: string, role: 'player' | 'spectator') => Promise<Room | null>;
-  joinRoom: (code: string, playerName: string, role: 'player' | 'spectator') => Promise<Room | null>;
+  createRoom: (name: string, playerName: string) => Promise<Room | null>;
+  joinRoom: (code: string, playerName: string) => Promise<Room | null>;
   leaveRoom: () => void;
   sendMessage: (message: string) => void;
-  rollDice: (notation: string) => void;
+  rollDice: (sides: number, modifier?: number, isPrivate?: boolean) => void;
   updateCharacter: (character: Character) => void;
   updatePlayerRole: (playerId: string, role: 'player' | 'spectator') => void;
   setMapUrl: (url: string) => void;
@@ -40,7 +40,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [currentPlayer, setCurrentPlayer] = useState<Player | null>(null);
   const [characters, setCharacters] = useState<Map<string, Character>>(new Map());
   const [tokens, setTokens] = useState<Map<string, Token>>(new Map());
-  const [currentTrack, setCurrentTrack] = useState<MusicTrack | null>(null);
+  const [currentTrack] = useState<MusicTrack | null>(null);
   const [timer, setTimer] = useState<TurnTimer | null>(null);
   const [diceRolls, setDiceRolls] = useState<DiceRoll[]>([]);
   const [isDarkMode, setIsDarkMode] = useState(true);
@@ -107,28 +107,34 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  const createRoom = useCallback(async (name: string, playerName: string, role: 'player' | 'spectator' = 'player'): Promise<Room | null> => {
+  const createRoom = useCallback(async (name: string, playerName: string): Promise<Room | null> => {
     if (!socket) return null;
     
     return new Promise((resolve) => {
-      socket.emit('room:create', { name, playerName, role }, (room) => {
-        setRoom(room);
-        setCurrentPlayer(room.players[0]);
-        resolve(room);
+      socket.emit('room:create', { name, playerName, sessionId: 'session_' + Date.now() }, (response: SocketAck<{ state: GameState; identity: ClientIdentity }>) => {
+        if (response.ok) {
+          setRoom(response.data.state.room);
+          setCurrentPlayer(response.data.state.room.players.find((p: any) => p.id === response.data.identity.playerId) || null);
+          resolve(response.data.state.room);
+        } else {
+          resolve(null);
+        }
       });
     });
   }, [socket]);
 
-  const joinRoom = useCallback(async (code: string, playerName: string, role: 'player' | 'spectator' = 'player'): Promise<Room | null> => {
+  const joinRoom = useCallback(async (code: string, playerName: string): Promise<Room | null> => {
     if (!socket) return null;
     
     return new Promise((resolve) => {
-      socket.emit('room:join', { code, playerName, role }, (room) => {
-        if (room) {
-          setRoom(room);
-          setCurrentPlayer(room.players.find(p => p.id === socket.id) || null);
+      socket.emit('room:join', { code, playerName, sessionId: 'session_' + Date.now() }, (response: SocketAck<{ state: GameState; identity: ClientIdentity }>) => {
+        if (response.ok) {
+          setRoom(response.data.state.room);
+          setCurrentPlayer(response.data.state.room.players.find((p: any) => p.id === response.data.identity.playerId) || null);
+          resolve(response.data.state.room);
+        } else {
+          resolve(null);
         }
-        resolve(room);
       });
     });
   }, [socket]);
@@ -144,50 +150,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [socket]);
 
   const sendMessage = useCallback((message: string) => {
-    if (socket && currentPlayer) {
-      socket.emit('chat:message', {
-        playerId: currentPlayer.id,
-        message,
-        timestamp: Date.now()
-      });
-    }
+    if (!socket || !currentPlayer) return;
+    socket.emit('chat:message', { message });
   }, [socket, currentPlayer]);
 
-  const rollDice = useCallback((notation: string) => {
-    if (socket && currentPlayer) {
-      const diceRegex = /^(\d+)?d(\d+)([+-]\d+)?$/i;
-      const match = notation.match(diceRegex);
-      
-      if (!match) return;
-
-      const count = parseInt(match[1]) || 1;
-      const sides = parseInt(match[2]);
-      const bonus = parseInt(match[3]) || 0;
-      
-      if (sides > 1000) return;
-
-      const results: number[] = [];
-      let total = 0;
-      for (let i = 0; i < count; i++) {
-        const res = Math.floor(Math.random() * sides) + 1;
-        results.push(res);
-        total += res;
-      }
-      total += bonus;
-
-      const roll: DiceRoll = {
-        id: Date.now().toString(),
-        playerId: currentPlayer.id,
-        notation,
-        results,
-        bonus,
-        total,
-        timestamp: Date.now()
-      };
-      
-      socket.emit('dice:roll', roll);
-      setDiceRolls(prev => [...prev.slice(-9), roll]);
-    }
+  const rollDice = useCallback((sides: number, modifier?: number, isPrivate?: boolean) => {
+    if (!socket || !currentPlayer) return;
+    socket.emit('dice:roll', { sides, modifier, isPrivate });
   }, [socket, currentPlayer]);
 
   const updateCharacter = useCallback((character: Character) => {
@@ -262,11 +231,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     extendTimer,
     setTimerOrder,
     toggleDarkMode,
-    setLanguage,
-    // Add these to satisfy the setters if they are needed in context, but here they aren't
-    setCurrentTrack, 
-    setTimer
-  } as any; // Cast to any to avoid setter issues for now, or just ensure currentTrack/timer are used
+    setLanguage
+  };
 
   return (
     <GameContext.Provider value={value}>

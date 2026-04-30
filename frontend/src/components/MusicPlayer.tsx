@@ -20,7 +20,8 @@ export const MusicPlayer: React.FC = () => {
   useEffect(() => {
     if (!socket) return;
 
-    socket.on('music:play', (track) => {
+    socket.on('music:play', (trackId) => {
+      const track = playlist.find(t => t.id === trackId) || null;
       setCurrentTrack(track);
       setIsPlaying(true);
     });
@@ -82,9 +83,10 @@ export const MusicPlayer: React.FC = () => {
     setNewTrackUrl('');
   };
 
-  const playTrack = (track: MusicTrack) => {
-    if (!socket || !isMaster) return;
-    socket.emit('music:play', track);
+  const handlePlayTrack = (track: MusicTrack) => {
+    if (socket && isMaster) {
+      socket.emit('music:play', track.id);
+    }
   };
 
   const togglePlay = () => {
@@ -93,7 +95,7 @@ export const MusicPlayer: React.FC = () => {
     if (isPlaying) {
       socket.emit('music:pause');
     } else if (currentTrack) {
-      socket.emit('music:play', currentTrack);
+      socket.emit('music:play', currentTrack.id);
     }
   };
 
@@ -197,7 +199,7 @@ export const MusicPlayer: React.FC = () => {
             {playlist.map((track) => (
               <div key={track.id} className="flex items-center bg-gray-700 rounded group">
                 <button
-                  onClick={() => playTrack(track)}
+                  onClick={() => handlePlayTrack(track)}
                   className={`px-3 py-1 rounded-l text-sm transition ${
                     currentTrack?.id === track.id 
                       ? 'bg-purple-600' 
