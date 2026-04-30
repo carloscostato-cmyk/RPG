@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Sun, Moon, Globe, Play, LogIn, Users, Dice2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useGame } from '../GameContext';
 
 export const LandingPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { createRoom, joinRoom, isDarkMode, toggleDarkMode, language, setLanguage } = useGame();
   
   const [mode, setMode] = useState<'create' | 'join'>('create');
@@ -16,190 +17,150 @@ export const LandingPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  useEffect(() => {
+    const codeParam = searchParams.get('code');
+    const roleParam = searchParams.get('role') as 'player' | 'spectator' | null;
+    
+    if (codeParam) {
+      setRoomCode(codeParam.toUpperCase());
+      setMode('join');
+    }
+    if (roleParam && (roleParam === 'player' || roleParam === 'spectator')) {
+      setRole(roleParam);
+    }
+  }, [searchParams]);
+
   const handleCreateRoom = async () => {
     if (!playerName.trim() || !roomName.trim()) return;
-    
     setLoading(true);
     setError('');
-    
-    const room = await createRoom(roomName, playerName, role);
+    // Master role is forced on backend, so we don't pass 'role' choice here
+    const room = await createRoom(roomName, playerName, 'player'); 
     if (room) {
       navigate(`/sala/${room.code}`);
     } else {
       setError('Erro ao criar sala');
     }
-    
     setLoading(false);
   };
 
   const handleJoinRoom = async () => {
-    if (!playerName.trim() || !roomCode.trim()) return;
-    
+    if (!playerName.trim() || !roomCode.trim()) {
+      setError('Preencha seu nome e o código da sala');
+      return;
+    }
     setLoading(true);
     setError('');
-    
-    const room = await joinRoom(roomCode, playerName, role);
-    if (room) {
-      navigate(`/sala/${room.code}`);
-    } else {
-      setError('Sala não encontrada. Verifique o código.');
+    try {
+      const room = await joinRoom(roomCode, playerName, role);
+      if (room) {
+        navigate(`/sala/${room.code}`);
+      } else {
+        setError('Sala não encontrada ou código inválido');
+      }
+    } catch (err) {
+      setError('Erro de conexão');
     }
-    
     setLoading(false);
   };
 
   return (
-    <div className={`min-h-screen flex items-center justify-center p-4 ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'}`}>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md"
-      >
-        <div className="text-center mb-8">
-          <motion.div 
-            className="inline-flex items-center justify-center mb-4"
-            animate={{ rotate: [0, 5, -5, 0] }}
-            transition={{ repeat: Infinity, duration: 4, repeatDelay: 5 }}
-          >
-            <Dice2 size={64} className="text-blue-500" />
-          </motion.div>
-          
-          <h1 className="text-4xl font-bold mb-2 tracking-tight">MESA VIRTUAL RPG</h1>
-          <p className={`text-lg ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-            Jogar nunca foi tão fácil
-          </p>
+    <div className={`min-h-screen flex items-center justify-center p-4 ${isDarkMode ? 'bg-[#0f172a]' : 'bg-gray-100'}`}>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full max-w-md">
+        <div className="text-center mb-6">
+          <h1 className="text-3xl font-bold text-blue-500 mb-1">IMAGINARY TABLES</h1>
+          <p className="text-gray-500 text-sm">Sua mesa de RPG virtual</p>
         </div>
 
-        <div className={`rounded-2xl p-6 shadow-2xl border ${isDarkMode ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-100'}`}>
-          <div className="flex gap-2 mb-6">
+        <div className={`rounded-xl p-6 shadow-xl ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+          <div className="flex border-b border-gray-700 mb-6">
             <button
               onClick={() => setMode('create')}
-              className={`flex-1 py-3 rounded-lg font-medium flex items-center justify-center gap-2 transition-all ${
-                mode === 'create'
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20'
-                  : isDarkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
+              className={`flex-1 pb-3 font-bold transition-colors ${mode === 'create' ? 'text-blue-500 border-b-2 border-blue-500' : 'text-gray-500'}`}
             >
-              <Play size={18} />
-              Criar Sala
+              CRIAR SALA
             </button>
-            
             <button
               onClick={() => setMode('join')}
-              className={`flex-1 py-3 rounded-lg font-medium flex items-center justify-center gap-2 transition-all ${
-                mode === 'join'
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20'
-                  : isDarkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
+              className={`flex-1 pb-3 font-bold transition-colors ${mode === 'join' ? 'text-blue-500 border-b-2 border-blue-500' : 'text-gray-500'}`}
             >
-              <LogIn size={18} />
-              Entrar Sala
+              ENTRAR NA SALA
             </button>
           </div>
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-2 opacity-70">Seu Nome</label>
+              <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Seu Nome</label>
               <input
                 type="text"
                 value={playerName}
                 onChange={(e) => setPlayerName(e.target.value)}
-                placeholder="Como você quer ser chamado?"
-                className={`w-full rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 transition ${
-                  isDarkMode ? 'bg-gray-700 text-white placeholder-gray-400' : 'bg-gray-100 text-gray-900 placeholder-gray-500'
-                }`}
+                className={`w-full rounded-lg px-4 py-2 outline-none border ${isDarkMode ? 'bg-gray-900 border-gray-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
               />
             </div>
 
-            <div className="flex gap-2">
-              <button 
-                onClick={() => setRole('player')}
-                className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${role === 'player' ? 'bg-blue-600/20 text-blue-400 border border-blue-500/50' : 'bg-gray-700/50 text-gray-400 border border-transparent'}`}
-              >
-                🎒 Jogador
-              </button>
-              <button 
-                onClick={() => setRole('spectator')}
-                className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${role === 'spectator' ? 'bg-purple-600/20 text-purple-400 border border-purple-500/50' : 'bg-gray-700/50 text-gray-400 border border-transparent'}`}
-              >
-                👁️ Espectador
-              </button>
-            </div>
+            {mode === 'join' && (
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Entrar como</label>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => setRole('player')}
+                    className={`flex-1 py-2 rounded-lg text-xs font-bold border transition ${role === 'player' ? 'bg-blue-600 border-blue-500 text-white' : 'bg-transparent border-gray-600 text-gray-400'}`}
+                  >
+                    JOGADOR
+                  </button>
+                  <button 
+                    onClick={() => setRole('spectator')}
+                    className={`flex-1 py-2 rounded-lg text-xs font-bold border transition ${role === 'spectator' ? 'bg-purple-600 border-purple-500 text-white' : 'bg-transparent border-gray-600 text-gray-400'}`}
+                  >
+                    ESPECTADOR
+                  </button>
+                </div>
+              </div>
+            )}
 
             {mode === 'create' ? (
               <div>
-                <label className="block text-sm font-medium mb-2 opacity-70">Nome da Sala</label>
+                <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Nome da Sala</label>
                 <input
                   type="text"
                   value={roomName}
                   onChange={(e) => setRoomName(e.target.value)}
-                  placeholder="Aventura dos Heróis"
-                  className={`w-full rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 transition ${
-                    isDarkMode ? 'bg-gray-700 text-white placeholder-gray-400' : 'bg-gray-100 text-gray-900 placeholder-gray-500'
-                  }`}
+                  className={`w-full rounded-lg px-4 py-2 outline-none border ${isDarkMode ? 'bg-gray-900 border-gray-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
                 />
               </div>
             ) : (
               <div>
-                <label className="block text-sm font-medium mb-2 opacity-70">Código da Sala</label>
+                <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Código da Sala</label>
                 <input
                   type="text"
                   value={roomCode}
                   onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-                  placeholder="RPG123"
-                  maxLength={6}
-                  className={`w-full rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 text-center font-mono text-xl uppercase tracking-widest transition ${
-                    isDarkMode ? 'bg-gray-700 text-white placeholder-gray-400' : 'bg-gray-100 text-gray-900 placeholder-gray-500'
-                  }`}
+                  className={`w-full rounded-lg px-4 py-2 outline-none border text-center font-mono text-xl ${isDarkMode ? 'bg-gray-900 border-gray-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
                 />
               </div>
             )}
 
-            {error && (
-              <motion.p 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="text-red-500 text-sm text-center font-medium bg-red-500/10 py-2 rounded-lg"
-              >
-                {error}
-              </motion.p>
-            )}
+            {error && <p className="text-red-500 text-xs font-bold text-center">{error}</p>}
 
             <button
               onClick={mode === 'create' ? handleCreateRoom : handleJoinRoom}
-              disabled={loading || !playerName.trim() || (mode === 'create' ? !roomName.trim() : !roomCode.trim())}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 rounded-lg transition-all transform active:scale-95 shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2"
+              disabled={loading}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition-all"
             >
-              {loading ? (
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <Users size={20} />
-              )}
-              {mode === 'create' ? 'Criar e Entrar' : 'Entrar na Sala'}
+              {loading ? 'CARREGANDO...' : (mode === 'create' ? 'CRIAR COMO MESTRE' : 'ENTRAR NA SALA')}
             </button>
           </div>
         </div>
 
-        <div className="mt-6 flex justify-center items-center gap-4">
-          <button
-            onClick={toggleDarkMode}
-            className={`p-3 rounded-full transition ${isDarkMode ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white hover:bg-gray-100 shadow'}`}
-          >
+        <div className="mt-4 flex justify-center gap-4">
+          <button onClick={toggleDarkMode} className="text-gray-500 hover:text-white transition">
             {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
           </button>
-          
-          <button
-            onClick={() => setLanguage(language === 'pt' ? 'en' : 'pt')}
-            className={`p-3 rounded-full transition ${isDarkMode ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white hover:bg-gray-100 shadow'}`}
-          >
-            <Globe size={20} />
-            <span className="ml-1 text-sm font-medium">{language.toUpperCase()}</span>
+          <button onClick={() => setLanguage(language === 'pt' ? 'en' : 'pt')} className="text-gray-500 hover:text-white transition text-xs font-bold">
+            {language.toUpperCase()}
           </button>
         </div>
-
-        <p className={`text-center mt-8 text-sm ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-          Feito com ❤️ para jogadores de RPG
-        </p>
       </motion.div>
     </div>
   );
