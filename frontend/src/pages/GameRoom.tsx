@@ -75,11 +75,32 @@ export const GameRoom: React.FC = () => {
           <GameCanvas />
 
           {code && (
-            <div className="pointer-events-auto absolute left-1/2 top-4 z-30 -translate-x-1/2 rounded-xl border border-cyan-300/40 bg-slate-950/80 px-4 py-2 text-center shadow-[0_0_20px_rgba(34,211,238,0.25)] backdrop-blur cursor-pointer hover:bg-slate-900/90 transition" onClick={() => {
-              navigator.clipboard.writeText(code);
-            }}>
-              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-cyan-200/80">Codigo da Sala (clique para copiar)</p>
-              <p className="font-mono text-base font-black tracking-widest text-cyan-200">{code}</p>
+            <div className="pointer-events-auto absolute left-1/2 top-4 z-30 -translate-x-1/2 rounded-2xl border-2 border-cyan-400/50 bg-slate-950/85 px-5 py-3 text-center shadow-[0_0_30px_rgba(34,211,238,0.4)] backdrop-blur-md min-w-[320px]">
+              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-cyan-200/80">Codigo da Sala</p>
+              <p className="font-mono text-xl font-black tracking-widest text-cyan-200 mb-3">{code}</p>
+              
+              {currentPlayer?.isMaster && (
+                <div className="grid grid-cols-2 gap-2">
+                  <button 
+                    className="rounded-lg bg-cyan-600 px-3 py-2 text-xs font-bold text-white hover:bg-cyan-500 transition"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigator.clipboard.writeText(window.location.origin + '/sala/' + code);
+                    }}
+                  >
+                    🔗 CONVIDAR JOGADORES
+                  </button>
+                  <button 
+                    className="rounded-lg bg-slate-700 px-3 py-2 text-xs font-bold text-white hover:bg-slate-600 transition"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigator.clipboard.writeText(window.location.origin + '/sala/' + code + '?view');
+                    }}
+                  >
+                    👁️ ESPECTADORES
+                  </button>
+                </div>
+              )}
             </div>
           )}
           
