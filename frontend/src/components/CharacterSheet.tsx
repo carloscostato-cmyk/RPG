@@ -358,6 +358,7 @@ function createBlankCharacter(roomId: string, ownerId: string): Character {
     spells: [],
     notes: '',
     notionUrl: '',
+    createdAt: Date.now(),
     updatedAt: Date.now(),
   };
 }
