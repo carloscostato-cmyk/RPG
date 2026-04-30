@@ -1,13 +1,18 @@
-import React, { useState } from 'react';
+import React, { Suspense, lazy, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Dice5, LogOut, MessageSquare, Users } from 'lucide-react';
+import type { PlayerRole } from '@shared/types';
 import { CharacterSheet } from '../components/CharacterSheet';
 import { GameCanvas } from '../components/GameCanvas';
-import { MusicPlayer } from '../components/MusicPlayer';
 import { TurnTimer } from '../components/TurnTimer';
 import { TurnNotification } from '../components/TurnNotification';
 import { DiceOverlay } from '../components/DiceOverlay';
 import { useGame } from '../GameContext';
+
+const MusicPlayer = lazy(async () => {
+  const module = await import('../components/MusicPlayer');
+  return { default: module.MusicPlayer };
+});
 
 export const GameRoom: React.FC = () => {
   const navigate = useNavigate();
@@ -24,14 +29,17 @@ export const GameRoom: React.FC = () => {
     isConnected,
     isDarkMode,
     updateRoom,
+    setPlayerRole,
   } = useGame();
   
   const [mobileTab, setMobileTab] = useState<'sheet' | 'chat' | 'dice'>('sheet');
   const [message, setMessage] = useState('');
   const [modifier, setModifier] = useState(0);
   const [showMasterSettings, setShowMasterSettings] = useState(false);
+  const isSpectator = currentPlayer?.role === 'spectator';
 
   const submitMessage = () => {
+    if (isSpectator) return;
     if (!message.trim()) return;
     sendMessage(message);
     setMessage('');
@@ -63,8 +71,15 @@ export const GameRoom: React.FC = () => {
       {/* Main Content Area */}
       <div className="flex flex-1 flex-col overflow-hidden md:flex-row">
         {/* Map Area */}
-        <main className="relative h-[45vh] min-w-0 flex-1 overflow-hidden md:h-auto">
+        <main className="relative h-[50vh] min-w-0 flex-1 overflow-hidden md:h-auto">
           <GameCanvas />
+
+          {room?.code && (
+            <div className="pointer-events-none absolute left-1/2 top-4 z-30 -translate-x-1/2 rounded-xl border border-cyan-300/40 bg-slate-950/80 px-4 py-2 text-center shadow-[0_0_20px_rgba(34,211,238,0.25)] backdrop-blur">
+              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-cyan-200/80">Codigo da Sala</p>
+              <p className="font-mono text-base font-black tracking-widest text-cyan-200">{room.code}</p>
+            </div>
+          )}
           
           <button
             onClick={handleLeave}
@@ -76,7 +91,7 @@ export const GameRoom: React.FC = () => {
         </main>
 
         {/* Info Area (Mobile Split / Desktop Sidebar) */}
-        <aside className="flex h-[55vh] flex-col border-t border-cyan-300/20 bg-slate-950/95 shadow-[0_-10px_30px_rgba(0,0,0,0.5)] md:h-full md:w-96 md:border-l md:border-t-0">
+        <aside className="flex h-[50vh] flex-col border-t border-cyan-300/20 bg-slate-950/95 shadow-[0_-10px_30px_rgba(0,0,0,0.5)] md:h-full md:w-96 md:border-l md:border-t-0">
           {/* Mobile Tabs */}
           <div className="flex border-b border-white/10 md:hidden">
             <button
@@ -119,10 +134,11 @@ export const GameRoom: React.FC = () => {
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && submitMessage()}
-                  placeholder="Sua mensagem..."
+                  placeholder={isSpectator ? 'Modo espectador: somente leitura' : 'Sua mensagem...'}
+                  disabled={isSpectator}
                   className="flex-1 rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400"
                 />
-                <button onClick={submitMessage} className="rounded-lg bg-cyan-600 px-4 py-2 font-bold text-white">Enviar</button>
+                <button onClick={submitMessage} disabled={isSpectator} className="rounded-lg bg-cyan-600 px-4 py-2 font-bold text-white disabled:opacity-50">Enviar</button>
               </div>
             </div>
 
@@ -142,6 +158,7 @@ export const GameRoom: React.FC = () => {
                   <button 
                     key={sides}
                     onClick={() => rollDice(sides, modifier)}
+                    disabled={isSpectator}
                     className="flex flex-col items-center justify-center rounded-lg border border-amber-200/20 bg-amber-500/10 py-3 text-amber-200 hover:bg-amber-500/20"
                   >
                     <Dice5 size={20} />
@@ -154,7 +171,7 @@ export const GameRoom: React.FC = () => {
                   <div key={roll.id} className="flex items-center justify-between rounded-lg border border-amber-200/10 bg-amber-400/5 px-3 py-2 text-sm">
                     <span className="text-slate-300">{roll.playerName}</span>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-slate-500">d{roll.sides}</span>
+                      <span className="text-xs text-slate-500">{roll.expression}</span>
                       <strong className="text-lg text-amber-300">{roll.total}</strong>
                     </div>
                   </div>
@@ -202,6 +219,7 @@ export const GameRoom: React.FC = () => {
                   type="number" 
                   value={modifier}
                   onChange={(e) => setModifier(parseInt(e.target.value) || 0)}
+                  disabled={isSpectator}
                   className="w-10 rounded bg-slate-900 text-center text-xs font-bold text-amber-400"
                 />
               </div>
@@ -211,6 +229,7 @@ export const GameRoom: React.FC = () => {
                   <button 
                     key={sides}
                     onClick={() => rollDice(sides, modifier)}
+                    disabled={isSpectator}
                     className="flex h-7 w-9 items-center justify-center rounded border border-amber-500/30 bg-amber-500/10 text-[10px] font-bold text-amber-200 hover:bg-amber-500/30"
                   >
                     d{sides}
@@ -221,7 +240,9 @@ export const GameRoom: React.FC = () => {
               {diceRolls.slice(-5).reverse().map(r => (
                 <div key={r.id} className="flex justify-between border-b border-white/5 pb-1 last:border-0">
                   <span>{r.playerName}</span>
-                  <strong className="text-amber-300">d{r.sides} = {r.total}</strong>
+                  <strong className="text-amber-300">
+                    {r.expression} [{r.results.join(', ')}] {r.modifier !== 0 ? `(${r.modifier > 0 ? '+' : ''}${r.modifier})` : ''} = {r.total}
+                  </strong>
                 </div>
               ))}
             </div>
@@ -242,16 +263,19 @@ export const GameRoom: React.FC = () => {
                 value={message} 
                 onChange={e => setMessage(e.target.value)} 
                 onKeyDown={e => e.key === 'Enter' && submitMessage()}
-                placeholder="Enviar mensagem..."
+                placeholder={isSpectator ? 'Modo espectador: somente leitura' : 'Enviar mensagem...'}
+                disabled={isSpectator}
                 className="flex-1 rounded bg-slate-900 px-3 py-1.5 text-xs outline-none"
               />
-              <button onClick={submitMessage} className="rounded bg-cyan-600 px-3 py-1.5 text-xs font-bold">OK</button>
+              <button onClick={submitMessage} disabled={isSpectator} className="rounded bg-cyan-600 px-3 py-1.5 text-xs font-bold disabled:opacity-50">OK</button>
             </div>
           </div>
         </div>
       </section>
 
-      <MusicPlayer />
+      <Suspense fallback={<div className="h-24 border-t border-[#c9a45f]/25 bg-[linear-gradient(180deg,#0f172a_0%,#020617_100%)]" />}>
+        <MusicPlayer />
+      </Suspense>
 
       {/* Master Settings Modal */}
       {showMasterSettings && (
@@ -318,6 +342,27 @@ export const GameRoom: React.FC = () => {
               </div>
 
               <div className="pt-4">
+                <h3 className="mb-2 text-sm font-bold text-cyan-200">Papeis da mesa</h3>
+                <div className="mb-4 space-y-2 rounded-xl border border-white/10 bg-white/5 p-3">
+                  {room?.players.map((player) => (
+                    <div key={player.id} className="flex items-center justify-between gap-3">
+                      <div className="text-xs">
+                        <p className="font-bold text-white">{player.name} {player.id === currentPlayer?.id ? '(Voce)' : ''}</p>
+                        <p className="text-slate-400">{player.connected ? 'Online' : 'Offline'}</p>
+                      </div>
+                      <select
+                        value={player.role}
+                        onChange={(e) => setPlayerRole(player.id, e.target.value as PlayerRole)}
+                        className="rounded border border-white/10 bg-slate-900 px-2 py-1 text-xs text-white"
+                      >
+                        <option value="player">Player</option>
+                        <option value="spectator">Spectator</option>
+                        <option value="master">GM</option>
+                      </select>
+                    </div>
+                  ))}
+                </div>
+
                 <button 
                    onClick={() => setShowMasterSettings(false)}
                    className="w-full rounded-xl bg-gradient-to-r from-amber-500 to-amber-700 py-4 font-bold text-white shadow-lg"

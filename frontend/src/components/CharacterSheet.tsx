@@ -19,6 +19,7 @@ const attributes: Array<{ key: AttributeKey; label: string; full: string }> = [
 export const CharacterSheet: React.FC = () => {
   const { currentPlayer, characters, room, updateCharacter, rollDice, isDarkMode } = useGame();
   const [activeTab, setActiveTab] = useState<Tab>('attributes');
+  const isSpectator = currentPlayer?.role === 'spectator';
 
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
 
@@ -36,6 +37,7 @@ export const CharacterSheet: React.FC = () => {
   }, [currentPlayer?.id, room?.id, savedCharacter]);
 
   const save = (updates: Partial<Character>) => {
+    if (isSpectator) return;
     const next = { ...draft, ...updates, roomId: room?.id || draft.roomId, ownerId: currentPlayer?.id || draft.ownerId };
     setDraft(next);
     if (currentPlayer && room) updateCharacter(next);
@@ -85,6 +87,12 @@ export const CharacterSheet: React.FC = () => {
         </div>
       )}
 
+      {isSpectator && (
+        <div className="rounded-lg border border-sky-300/25 bg-sky-500/10 px-3 py-2 text-xs font-semibold text-sky-100">
+          Modo espectador: ficha em somente leitura.
+        </div>
+      )}
+
       <div className="flex gap-3 rounded-lg border border-[#c9a45f]/25 bg-[#182132]/90 p-3 shadow-xl shadow-black/30">
         <label className="flex h-16 w-16 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg border border-[#d7b56d]/40 bg-[#0f1724] shadow-inner shadow-black/50 transition hover:border-[#f0d18b] hover:bg-[#18243a]">
           {draft.avatarUrl ? (
@@ -94,9 +102,15 @@ export const CharacterSheet: React.FC = () => {
           )}
           <input
             className="hidden"
-            value={draft.avatarUrl || ''}
-            onChange={(event) => save({ avatarUrl: event.target.value })}
-            placeholder="URL do avatar"
+            type="file"
+            accept="image/*"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (!file) return;
+              const reader = new FileReader();
+              reader.onloadend = () => save({ avatarUrl: String(reader.result || '') });
+              reader.readAsDataURL(file);
+            }}
           />
         </label>
 
@@ -109,6 +123,13 @@ export const CharacterSheet: React.FC = () => {
             className="w-full rounded-md border border-[#d7b56d]/25 bg-[#0f1724]/90 px-3 py-2 font-serif text-lg font-semibold text-[#fff3d8] outline-none placeholder:text-[#7f8796] focus:border-[#f0d18b] focus:ring-2 focus:ring-[#d7b56d]/35"
           />
           <div className="mt-2 flex gap-2">
+            <input
+              type="text"
+              placeholder="URL do avatar"
+              value={draft.avatarUrl || ''}
+              onChange={(event) => save({ avatarUrl: event.target.value })}
+              className="min-w-0 flex-1 rounded-md border border-[#58647a]/50 bg-[#101827] px-2 py-1 text-sm text-[#e8dcc0] outline-none placeholder:text-[#7f8796] focus:border-[#d7b56d]"
+            />
             <input
               type="text"
               placeholder="Classe"
@@ -160,6 +181,7 @@ export const CharacterSheet: React.FC = () => {
           <button
             key={sides}
             onClick={() => rollDice(sides)}
+            disabled={isSpectator}
             className="flex-1 rounded-md border border-[#d7b56d]/30 bg-[#1a2639] px-2 py-2 text-xs font-bold text-[#f6ead0] shadow-md shadow-black/20 transition hover:border-[#f0d18b] hover:bg-[#24344f] hover:text-white"
           >
             d{sides}
@@ -196,6 +218,7 @@ export const CharacterSheet: React.FC = () => {
                     <span title={attribute.full} className="font-serif font-semibold tracking-wide text-[#f0d18b]">{attribute.label}</span>
                     <button
                       onClick={() => rollDice(20, modifier)}
+                      disabled={isSpectator}
                       className="flex items-center gap-1 rounded-md border border-[#ef7f6f]/40 bg-[#7f2530] px-2 py-1 text-white transition hover:bg-[#a2323f]"
                     >
                       <Dice5 size={12} />

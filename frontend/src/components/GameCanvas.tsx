@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { Circle, Group, Image, Layer, Line, Rect, Stage, Text, Transformer } from 'react-konva';
 import Konva from 'konva';
 import useImage from 'use-image';
@@ -12,9 +12,10 @@ interface TokenComponentProps {
   isSelected: boolean;
   onSelect: () => void;
   onMove: (token: Token) => void;
+  onDragStateChange: (dragging: boolean) => void;
 }
 
-const TokenComponent: React.FC<TokenComponentProps> = ({ token, canMove, isSelected, onSelect, onMove }) => {
+const TokenComponentBase: React.FC<TokenComponentProps> = ({ token, canMove, isSelected, onSelect, onMove, onDragStateChange }) => {
   const shapeRef = useRef<Konva.Rect>(null);
   const transformerRef = useRef<Konva.Transformer>(null);
   const [image] = useImage(token.imageUrl || '', 'anonymous');
@@ -65,7 +66,12 @@ const TokenComponent: React.FC<TokenComponentProps> = ({ token, canMove, isSelec
           onSelect();
         }}
         onDragEnd={(event) => {
+          onDragStateChange(false);
           onMove({ ...token, x: event.target.x(), y: event.target.y() });
+        }}
+        onDragStart={(event) => {
+          event.cancelBubble = true;
+          onDragStateChange(true);
         }}
       />
 
@@ -100,6 +106,24 @@ const TokenComponent: React.FC<TokenComponentProps> = ({ token, canMove, isSelec
   );
 };
 
+const TokenComponent = memo(TokenComponentBase, (prev, next) => {
+  return (
+    prev.canMove === next.canMove
+    && prev.isSelected === next.isSelected
+    && prev.token.id === next.token.id
+    && prev.token.x === next.token.x
+    && prev.token.y === next.token.y
+    && prev.token.width === next.token.width
+    && prev.token.height === next.token.height
+    && prev.token.imageUrl === next.token.imageUrl
+    && prev.token.name === next.token.name
+    && prev.token.color === next.token.color
+    && prev.token.isVisible === next.token.isVisible
+    && prev.token.locked === next.token.locked
+    && prev.token.layer === next.token.layer
+  );
+});
+
 export const GameCanvas: React.FC = () => {
   const { tokens, room, currentPlayer, addToken, moveToken, updateToken, removeToken, isDarkMode } = useGame();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -108,6 +132,8 @@ export const GameCanvas: React.FC = () => {
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null);
+  const [isDraggingToken, setIsDraggingToken] = useState(false);
+  const [mapImage] = useImage(room?.mapUrl || '', 'anonymous');
 
   useEffect(() => {
     const element = containerRef.current;
@@ -126,6 +152,14 @@ export const GameCanvas: React.FC = () => {
   const selectedToken = selectedTokenId ? tokens.get(selectedTokenId) || null : null;
   const gridSize = room?.gridSize || 50;
   const isMaster = Boolean(currentPlayer?.isMaster);
+  const mapWidth = gridSize * 40;
+  const mapHeight = gridSize * 30;
+
+  useEffect(() => {
+    const centeredX = Math.round((size.width - mapWidth) / 2);
+    const centeredY = Math.round((size.height - mapHeight) / 2);
+    setPosition({ x: centeredX, y: centeredY });
+  }, [mapHeight, mapWidth, size.height, size.width, room?.id]);
 
   const gridCells = useMemo(() => {
     const cells = [];
@@ -148,8 +182,6 @@ export const GameCanvas: React.FC = () => {
   }, [gridSize, isDarkMode]);
 
   const magicMarks = useMemo(() => {
-    const mapWidth = gridSize * 40;
-    const mapHeight = gridSize * 30;
     return (
       <>
         <Rect
@@ -199,9 +231,34 @@ export const GameCanvas: React.FC = () => {
           strokeWidth={2}
           dash={[8, 14]}
         />
+        {isMaster && (
+          <Rect
+            x={mapWidth - gridSize * 8}
+            y={gridSize}
+            width={gridSize * 7}
+            height={gridSize * 6}
+            fill="rgba(251,113,133,0.08)"
+            stroke="rgba(251,113,133,0.5)"
+            strokeWidth={2}
+            dash={[7, 7]}
+            cornerRadius={8}
+          />
+        )}
+        {isMaster && (
+          <Text
+            x={mapWidth - gridSize * 8}
+            y={gridSize * 0.4}
+            width={gridSize * 7}
+            text="AREA OCULTA GM"
+            align="center"
+            fill="#fb7185"
+            fontStyle="bold"
+            fontSize={12}
+          />
+        )}
       </>
     );
-  }, [gridSize, isDarkMode]);
+  }, [gridSize, isDarkMode, isMaster, mapHeight, mapWidth]);
 
   const [lastCenter, setLastCenter] = useState<{ x: number; y: number } | null>(null);
   const [lastDist, setLastDist] = useState<number>(0);
@@ -287,8 +344,17 @@ export const GameCanvas: React.FC = () => {
 
   const canMoveToken = (token: Token) => {
     if (isMaster) return true;
+    if (currentPlayer?.role !== 'player') return false;
+    if (token.layer === 'gm-hidden') return false;
     return Boolean(room?.settings.allowPlayersMoveOwnTokens && token.ownerId === currentPlayer?.id && !token.locked);
   };
+
+  const visibleTokens = useMemo(() => {
+    return Array.from(tokens.values()).filter((token) => {
+      if (isMaster) return true;
+      return token.layer !== 'gm-hidden';
+    });
+  }, [tokens, isMaster]);
 
   const updateSelectedToken = (updates: Partial<Token>) => {
     if (!selectedToken) return;
@@ -314,7 +380,7 @@ export const GameCanvas: React.FC = () => {
         scaleY={scale}
         x={position.x}
         y={position.y}
-        draggable={!selectedTokenId}
+        draggable={!isDraggingToken}
         onDragMove={(event) => {
           if (event.target === stageRef.current) {
             setPosition({ x: event.target.x(), y: event.target.y() });
@@ -334,10 +400,22 @@ export const GameCanvas: React.FC = () => {
           }
         }}
       >
-        <Layer>{magicMarks}</Layer>
+        <Layer>
+          {magicMarks}
+          {mapImage && (
+            <Image
+              image={mapImage}
+              x={0}
+              y={0}
+              width={mapWidth}
+              height={mapHeight}
+              opacity={0.85}
+            />
+          )}
+        </Layer>
         <Layer>{gridCells}</Layer>
         <Layer>
-          {Array.from(tokens.values()).map((token) => (
+          {visibleTokens.map((token) => (
             <TokenComponent
               key={token.id}
               token={token}
@@ -345,6 +423,7 @@ export const GameCanvas: React.FC = () => {
               isSelected={selectedTokenId === token.id}
               onSelect={() => setSelectedTokenId(token.id)}
               onMove={moveToken}
+              onDragStateChange={setIsDraggingToken}
             />
           ))}
         </Layer>
@@ -400,7 +479,8 @@ export const GameCanvas: React.FC = () => {
             <input
               value={selectedToken.name}
               onChange={(event) => updateSelectedToken({ name: event.target.value })}
-              className="min-w-0 flex-1 rounded border border-white/10 bg-slate-900 px-3 py-2 text-sm outline-none focus:border-cyan-300 focus:ring-2 focus:ring-cyan-400/40"
+              disabled={!isMaster}
+              className="min-w-0 flex-1 rounded border border-white/10 bg-slate-900 px-3 py-2 text-sm outline-none focus:border-cyan-300 focus:ring-2 focus:ring-cyan-400/40 disabled:cursor-not-allowed disabled:opacity-60"
             />
             {isMaster && (
               <button
@@ -424,7 +504,8 @@ export const GameCanvas: React.FC = () => {
               </button>
             )}
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          {isMaster ? (
+            <div className="grid grid-cols-2 gap-2">
             <div className="col-span-2 flex gap-2">
               <input
                 value={selectedToken.imageUrl || ''}
@@ -449,6 +530,31 @@ export const GameCanvas: React.FC = () => {
                 />
               </label>
             </div>
+            {isMaster && (
+              <select
+                value={selectedToken.ownerId || ''}
+                onChange={(event) => updateSelectedToken({ ownerId: event.target.value || undefined })}
+                className="col-span-2 h-10 rounded border border-white/10 bg-slate-900 px-2 text-sm text-slate-100"
+              >
+                <option value="">Sem dono (GM)</option>
+                {room?.players.map((player) => (
+                  <option key={player.id} value={player.id}>
+                    {player.name}
+                  </option>
+                ))}
+              </select>
+            )}
+            {isMaster && (
+              <select
+                value={selectedToken.layer}
+                onChange={(event) => updateSelectedToken({ layer: event.target.value as Token['layer'] })}
+                className="col-span-2 h-10 rounded border border-white/10 bg-slate-900 px-2 text-sm text-slate-100"
+              >
+                <option value="tokens">Camada: Tokens</option>
+                <option value="gm-hidden">Camada: Oculto GM</option>
+                <option value="effects">Camada: Efeitos</option>
+              </select>
+            )}
             <input
               type="color"
               value={selectedToken.color || '#ef4444'}
@@ -463,7 +569,10 @@ export const GameCanvas: React.FC = () => {
               />
               Visivel
             </label>
-          </div>
+            </div>
+          ) : (
+            <p className="text-xs text-slate-300">Voce pode mover apenas seus tokens atribuidos.</p>
+          )}
         </div>
       )}
     </div>
