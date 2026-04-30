@@ -50,6 +50,39 @@ export default defineConfig({
   server: {
     port: 5173
   },
+  build: {
+    chunkSizeWarningLimit: 1200,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined
+
+          if (
+            id.includes('react-player')
+            || id.includes('hls.js')
+            || id.includes('dashjs')
+            || id.includes('@mux')
+            || id.includes('youtube-video-element')
+            || id.includes('vimeo-video-element')
+            || id.includes('spotify-audio-element')
+            || id.includes('twitch-video-element')
+          ) {
+            return 'vendor-media'
+          }
+
+          if (id.includes('konva') || id.includes('react-konva') || id.includes('use-image')) {
+            return 'vendor-canvas'
+          }
+
+          if (id.includes('framer-motion')) {
+            return 'vendor-motion'
+          }
+
+          return undefined
+        }
+      }
+    }
+  },
   resolve: {
     alias: {
       '@shared': '../shared'
