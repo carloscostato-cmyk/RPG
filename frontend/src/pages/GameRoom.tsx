@@ -74,35 +74,7 @@ export const GameRoom: React.FC = () => {
         <main className="relative h-[50vh] min-w-0 flex-1 overflow-hidden md:h-auto">
           <GameCanvas />
 
-          {code && (
-            <div className="pointer-events-auto absolute left-1/2 top-4 z-30 -translate-x-1/2 rounded-2xl border-2 border-cyan-400/50 bg-slate-950/85 px-5 py-3 text-center shadow-[0_0_30px_rgba(34,211,238,0.4)] backdrop-blur-md min-w-[320px]">
-              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-cyan-200/80">Codigo da Sala</p>
-              <p className="font-mono text-xl font-black tracking-widest text-cyan-200 mb-3">{code}</p>
-              
-              {currentPlayer?.isMaster && (
-                <div className="grid grid-cols-2 gap-2">
-                  <button 
-                    className="rounded-lg bg-cyan-600 px-3 py-2 text-xs font-bold text-white hover:bg-cyan-500 transition"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigator.clipboard.writeText(window.location.origin + '/sala/' + code);
-                    }}
-                  >
-                    🔗 CONVIDAR JOGADORES
-                  </button>
-                  <button 
-                    className="rounded-lg bg-slate-700 px-3 py-2 text-xs font-bold text-white hover:bg-slate-600 transition"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigator.clipboard.writeText(window.location.origin + '/sala/' + code + '?view');
-                    }}
-                  >
-                    👁️ ESPECTADORES
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
+
           
           <button
             onClick={handleLeave}
@@ -295,6 +267,38 @@ export const GameRoom: React.FC = () => {
           </div>
         </div>
       </section>
+
+      <div className="absolute left-4 bottom-[180px] z-30">
+        {code && (
+          <div className="pointer-events-auto rounded-2xl border-2 border-cyan-400/50 bg-slate-950/85 px-5 py-3 text-center shadow-[0_0_30px_rgba(34,211,238,0.4)] backdrop-blur-md min-w-[320px]">
+            <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-cyan-200/80">Codigo da Sala</p>
+            <p className="font-mono text-xl font-black tracking-widest text-cyan-200 mb-3">{code}</p>
+            
+            {currentPlayer?.isMaster && (
+              <div className="grid grid-cols-2 gap-2">
+                <button 
+                  className="rounded-lg bg-cyan-600 px-3 py-2 text-xs font-bold text-white hover:bg-cyan-500 transition"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigator.clipboard.writeText(window.location.origin + '/sala/' + code);
+                  }}
+                >
+                  🔗 CONVIDAR JOGADORES
+                </button>
+                <button 
+                  className="rounded-lg bg-slate-700 px-3 py-2 text-xs font-bold text-white hover:bg-slate-600 transition"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigator.clipboard.writeText(window.location.origin + '/sala/' + code + '?view');
+                  }}
+                >
+                  👁️ ESPECTADORES
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       <Suspense fallback={<div className="h-24 border-t border-[#c9a45f]/25 bg-[linear-gradient(180deg,#0f172a_0%,#020617_100%)]" />}>
         <MusicPlayer />
