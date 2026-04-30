@@ -261,4 +261,3 @@ export const GameCanvas: React.FC = () => {
     </div>
   );
 };
-};
