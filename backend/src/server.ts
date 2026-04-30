@@ -14,6 +14,7 @@ import type {
   MusicState,
   MusicTrack,
   Player,
+  PlayerRole,
   Room,
   SocketAck,
   SocketEvents,
@@ -92,6 +93,7 @@ io.on('connection', (socket) => {
         settings: {
           allowPlayersMoveOwnTokens: true,
           defaultTurnSeconds: 60,
+          timerEnabled: true,
         },
       };
 
@@ -165,6 +167,35 @@ io.on('connection', (socket) => {
     markDisconnected(socket);
   });
 
+  socket.on('room:update', (roomUpdate) => {
+    withMaster(socket, (state) => {
+      const nextMapUrl = cleanImageUrl(roomUpdate.mapUrl);
+      const nextGridSize = roomUpdate.gridSize ? clampNumber(roomUpdate.gridSize, 20, 200) : state.room.gridSize;
+      const defaultTurnSeconds = roomUpdate.settings?.defaultTurnSeconds
+        ? clampNumber(roomUpdate.settings.defaultTurnSeconds, 10, 600)
+        : state.room.settings.defaultTurnSeconds;
+
+      state.room = {
+        ...state.room,
+        name: cleanText(roomUpdate.name, 50) || state.room.name,
+        mapUrl: nextMapUrl,
+        gridSize: nextGridSize,
+        settings: {
+          ...state.room.settings,
+          allowPlayersMoveOwnTokens: roomUpdate.settings?.allowPlayersMoveOwnTokens ?? state.room.settings.allowPlayersMoveOwnTokens,
+          timerEnabled: roomUpdate.settings?.timerEnabled ?? state.room.settings.timerEnabled,
+          defaultTurnSeconds,
+        },
+      };
+
+      state.timer.defaultSeconds = defaultTurnSeconds;
+      if (state.timer.timeRemaining > defaultTurnSeconds) {
+        state.timer.timeRemaining = defaultTurnSeconds;
+      }
+      saveAndBroadcast(state);
+    });
+  });
+
   socket.on('token:add', (partial) => {
     withRoom(socket, (state, player) => {
       if (!player.isMaster) return deny(socket, 'Apenas o mestre pode criar tokens.');
@@ -178,10 +209,10 @@ io.on('connection', (socket) => {
         y: snapNumber(partial.y ?? 100, state.room.gridSize),
         width: clampNumber(partial.width ?? state.room.gridSize, 20, 400),
         height: clampNumber(partial.height ?? state.room.gridSize, 20, 400),
-        imageUrl: cleanUrl(partial.imageUrl),
+        imageUrl: cleanImageUrl(partial.imageUrl),
         color: partial.color || '#ef4444',
         isVisible: partial.isVisible ?? true,
-        layer: partial.layer || 'tokens',
+        layer: normalizeTokenLayer(partial.layer),
         rotation: 0,
         locked: Boolean(partial.locked),
         updatedAt: Date.now(),
@@ -216,9 +247,10 @@ io.on('connection', (socket) => {
       existing.y = snapNumber(token.y, state.room.gridSize);
       existing.width = clampNumber(token.width, 20, 400);
       existing.height = clampNumber(token.height, 20, 400);
-      existing.imageUrl = cleanUrl(token.imageUrl);
+      existing.imageUrl = cleanImageUrl(token.imageUrl);
       existing.color = token.color || existing.color;
       existing.isVisible = Boolean(token.isVisible);
+      existing.layer = player.isMaster ? normalizeTokenLayer(token.layer) : existing.layer;
       existing.locked = player.isMaster ? Boolean(token.locked) : existing.locked;
       existing.updatedAt = Date.now();
       saveAndBroadcast(state);
@@ -235,6 +267,7 @@ io.on('connection', (socket) => {
 
   socket.on('character:update', (character) => {
     withRoom(socket, (state, player) => {
+      if (player.role === 'spectator') return deny(socket, 'Espectador possui acesso somente leitura.');
       const ownerId = character.ownerId || player.id;
       if (!player.isMaster && ownerId !== player.id) return deny(socket, 'Voce so pode editar sua propria ficha.');
 
@@ -254,18 +287,32 @@ io.on('connection', (socket) => {
 
   socket.on('dice:roll', (data) => {
     withRoom(socket, (state, player) => {
+      if (player.role === 'spectator') return deny(socket, 'Espectador nao pode rolar dados.');
       if (!checkRate(socket, 'dice:roll', 30, 60000)) return deny(socket, 'Muitas rolagens em pouco tempo.');
-      const sides = [4, 6, 8, 10, 12, 20, 100].includes(data.sides) ? data.sides : 20;
-      const modifier = clampNumber(data.modifier || 0, -99, 99);
-      const result = Math.floor(Math.random() * sides) + 1;
+
+      const parsed = parseDiceInput(data);
+      if (!parsed) return deny(socket, 'Expressao invalida. Use formato como 2d20+5 ou 1d20 adv.');
+
+      const results = Array.from({ length: parsed.count }, () => Math.floor(Math.random() * parsed.sides) + 1);
+      const baseResult =
+        parsed.mode === 'advantage'
+          ? Math.max(...results)
+          : parsed.mode === 'disadvantage'
+            ? Math.min(...results)
+            : results.reduce((sum, value) => sum + value, 0);
+
       const roll: DiceRoll = {
         id: createId('roll'),
         playerId: player.id,
         playerName: player.name,
-        sides,
-        modifier,
-        result,
-        total: result + modifier,
+        expression: parsed.expression,
+        count: parsed.count,
+        sides: parsed.sides,
+        modifier: parsed.modifier,
+        mode: parsed.mode,
+        results,
+        result: baseResult,
+        total: baseResult + parsed.modifier,
         isPrivate: Boolean(data.isPrivate),
         timestamp: Date.now(),
       };
@@ -278,6 +325,7 @@ io.on('connection', (socket) => {
 
   socket.on('chat:message', (data) => {
     withRoom(socket, (state, player) => {
+      if (player.role === 'spectator') return deny(socket, 'Espectador nao pode enviar mensagens.');
       if (!checkRate(socket, 'chat:message', 20, 60000)) return deny(socket, 'Muitas mensagens em pouco tempo.');
       const messageText = cleanText(data.message, 300);
       if (!messageText) return;
@@ -298,9 +346,11 @@ io.on('connection', (socket) => {
 
   socket.on('music:add', (track) => {
     withMaster(socket, (state) => {
-      const url = cleanUrl(track.url);
+      const url = cleanAudioUrl(track.url);
       const name = cleanText(track.name, 60);
-      if (!url || !name) return deny(socket, 'Informe nome e URL MP3 valida.');
+      if (!url || !name) {
+        return deny(socket, 'URL invalida. Use MP3/streaming HTTP(S) ou YouTube.');
+      }
 
       state.music.playlist.push({
         id: createId('music'),
@@ -410,6 +460,31 @@ io.on('connection', (socket) => {
       state.timer.playerOrder = order;
       state.timer.isManualOrder = true;
       state.timer.updatedAt = Date.now();
+      saveAndBroadcast(state);
+    });
+  });
+
+  socket.on('player:role:set', (data) => {
+    withMaster(socket, (state, master) => {
+      const nextRole = normalizeRole(data.role);
+      const target = state.room.players.find((item) => item.id === data.playerId);
+      if (!target) return;
+
+      if (nextRole === 'master') {
+        state.room.players.forEach((item) => {
+          if (item.id !== target.id && item.isMaster) {
+            item.isMaster = false;
+            if (item.role === 'master') item.role = 'player';
+          }
+        });
+        state.room.masterId = target.id;
+        target.isMaster = true;
+      } else if (target.id === master.id) {
+        return deny(socket, 'Transfera a funcao de mestre antes de alterar seu proprio papel.');
+      }
+
+      target.role = nextRole;
+      target.isMaster = nextRole === 'master';
       saveAndBroadcast(state);
     });
   });
@@ -599,7 +674,9 @@ function updateMusic(state: GameState, updates: Partial<MusicState>) {
 
 function canControlToken(player: Player, token: Token, state: GameState) {
   if (player.isMaster) return true;
+  if (player.role !== 'player') return false;
   if (token.locked) return false;
+  if (token.layer === 'gm-hidden') return false;
   return state.room.settings.allowPlayersMoveOwnTokens && token.ownerId === player.id;
 }
 
@@ -614,7 +691,7 @@ function sanitizeCharacter(character: Character, roomId: string, ownerId: string
     level: clampNumber(character.level || 1, 1, 30),
     currentHp: clampNumber(character.currentHp || 0, 0, 9999),
     maxHp: clampNumber(character.maxHp || 1, 1, 9999),
-    avatarUrl: cleanUrl(character.avatarUrl),
+    avatarUrl: cleanImageUrl(character.avatarUrl),
     attributes: {
       str: clampNumber(character.attributes?.str || 10, 1, 30),
       dex: clampNumber(character.attributes?.dex || 10, 1, 30),
@@ -636,6 +713,7 @@ function sanitizeCharacter(character: Character, roomId: string, ownerId: string
       description: cleanText(spell.description || '', 300),
     })),
     notes: cleanText(character.notes || '', 5000),
+    notionUrl: cleanUrl(character.notionUrl),
     updatedAt: now,
   };
 }
@@ -670,6 +748,80 @@ function cleanUrl(value: unknown) {
   } catch {
     return undefined;
   }
+}
+
+function cleanImageUrl(value: unknown) {
+  if (typeof value !== 'string' || !value.trim()) return undefined;
+  const trimmed = value.trim();
+  if (/^data:image\/(png|jpeg|jpg|webp|gif);base64,/i.test(trimmed)) {
+    if (trimmed.length > 3_000_000) return undefined;
+    return trimmed;
+  }
+  return cleanUrl(trimmed);
+}
+
+function cleanAudioUrl(value: unknown) {
+  if (typeof value !== 'string' || !value.trim()) return undefined;
+  const raw = value.trim();
+  try {
+    const url = new URL(raw);
+    if (!['http:', 'https:'].includes(url.protocol)) return undefined;
+
+    const hostname = url.hostname.toLowerCase();
+    const pathname = url.pathname.toLowerCase();
+    const search = url.search.toLowerCase();
+    const audioExt = ['.mp3', '.wav', '.ogg', '.aac', '.m4a', '.flac', '.opus', '.weba', '.m3u8', '.pls'];
+    const isYoutube = hostname.includes('youtube.com') || hostname.includes('youtu.be');
+    const hasAudioExt = audioExt.some((ext) => pathname.endsWith(ext) || search.includes(ext));
+    const isLikelyStream = pathname.includes('stream') || pathname.includes('live') || search.includes('stream');
+
+    if (!isYoutube && !hasAudioExt && !isLikelyStream) return undefined;
+    return url.toString();
+  } catch {
+    return undefined;
+  }
+}
+
+function normalizeRole(role: PlayerRole | string | undefined): PlayerRole {
+  if (role === 'master' || role === 'player' || role === 'spectator') return role;
+  return 'player';
+}
+
+function normalizeTokenLayer(layer: Token['layer'] | string | undefined): Token['layer'] {
+  if (layer === 'map' || layer === 'tokens' || layer === 'effects' || layer === 'fog' || layer === 'gm-hidden') {
+    return layer;
+  }
+  return 'tokens';
+}
+
+function parseDiceInput(data: {
+  expression?: string;
+  sides?: number;
+  count?: number;
+  modifier?: number;
+  mode?: 'normal' | 'advantage' | 'disadvantage';
+}) {
+  const rawExpression = cleanText(data.expression || '', 40);
+  let count = clampNumber(data.count ?? 1, 1, 50);
+  let sides = clampNumber(data.sides ?? 20, 2, 1000);
+  let modifier = clampNumber(data.modifier ?? 0, -999, 999);
+  let mode: 'normal' | 'advantage' | 'disadvantage' = data.mode || 'normal';
+
+  if (rawExpression) {
+    const match = rawExpression.match(/^(\d{1,2})?d(\d{1,4})([+-]\d{1,3})?(?:\s*(adv|dis|advantage|disadvantage))?$/i);
+    if (!match) return null;
+    count = clampNumber(Number(match[1] || 1), 1, 50);
+    sides = clampNumber(Number(match[2]), 2, 1000);
+    modifier = clampNumber(Number(match[3] || 0), -999, 999);
+    if (match[4]) {
+      mode = match[4].toLowerCase().startsWith('adv') ? 'advantage' : 'disadvantage';
+    }
+  }
+
+  if (mode !== 'normal' && count < 2) count = 2;
+  const expression = `${count}d${sides}${modifier === 0 ? '' : modifier > 0 ? `+${modifier}` : modifier}`;
+
+  return { count, sides, modifier, mode, expression };
 }
 
 function clampNumber(value: unknown, min: number, max: number) {
@@ -712,8 +864,14 @@ function loadRooms() {
     if (!fs.existsSync(dataFile)) return;
     const parsed = JSON.parse(fs.readFileSync(dataFile, 'utf8')) as PersistedData;
     parsed.rooms.forEach((state) => {
+      state.room.settings = {
+        allowPlayersMoveOwnTokens: state.room.settings?.allowPlayersMoveOwnTokens ?? true,
+        defaultTurnSeconds: state.room.settings?.defaultTurnSeconds ?? 60,
+        timerEnabled: state.room.settings?.timerEnabled ?? true,
+      };
       state.room.players.forEach((player) => {
         player.connected = false;
+        if (!player.role) player.role = player.isMaster ? 'master' : 'player';
       });
       state.timer.isRunning = false;
       rooms.set(state.room.id, state);
