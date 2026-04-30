@@ -101,7 +101,7 @@ const TokenComponent: React.FC<TokenComponentProps> = ({ token, isSelected, onSe
       {isSelected && isMaster && ( // Point 10: Only master can edit/transform
         <Transformer
           ref={trRef}
-          boundBoxFunc={(oldBox, newBox) => {
+          boundBoxFunc={(_oldBox, newBox) => {
             newBox.width = Math.round(newBox.width / 50) * 50 || 50;
             newBox.height = Math.round(newBox.height / 50) * 50 || 50;
             return newBox;
@@ -125,7 +125,7 @@ export const GameCanvas: React.FC = () => {
 
   const isMaster = currentPlayer?.isMaster || false;
 
-  const handleWheel = (e: Konva.KonvaEvent<WheelEvent>) => {
+  const handleWheel = (e: Konva.KonvaEventObject<WheelEvent>) => {
     e.evt.preventDefault();
     const stage = stageRef.current;
     if (!stage) return;
@@ -151,7 +151,7 @@ export const GameCanvas: React.FC = () => {
     setPosition(newPos);
   };
 
-  const handleDragMove = (e: Konva.KonvaEvent<DragEvent>) => {
+  const handleDragMove = (e: Konva.KonvaEventObject<DragEvent>) => {
     // Only update position if we're dragging the stage (not a token)
     if (e.target instanceof Konva.Stage) {
       setPosition({

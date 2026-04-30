@@ -28,6 +28,7 @@ export interface Character {
   currentHp: number;
   maxHp: number;
   avatarUrl?: string;
+  notionUrl?: string;
   attributes: Attributes;
   inventory: Item[];
   spells: Spell[];
@@ -84,6 +85,7 @@ export interface TurnTimer {
   timeRemaining: number;
   isRunning: boolean;
   playerOrder: string[];
+  isManualOrder?: boolean;
 }
 
 export interface DiceRoll {
@@ -94,11 +96,15 @@ export interface DiceRoll {
   bonus: number;
   total: number;
   timestamp: number;
+  result?: number;
+  sides?: number;
+  modifier?: number;
+  playerName?: string;
 }
 
 export type SocketEvents = {
-  'room:create': (data: { name: string; playerName: string }, callback: (room: Room) => void) => void;
-  'room:join': (data: { code: string; playerName: string }, callback: (room: Room | null) => void) => void;
+  'room:create': (data: { name: string; playerName: string; role?: string }, callback: (room: Room) => void) => void;
+  'room:join': (data: { code: string; playerName: string; role?: string }, callback: (room: Room | null) => void) => void;
   'room:leave': () => void;
   'room:update': (room: Room) => void;
 
@@ -109,6 +115,7 @@ export type SocketEvents = {
 
   'character:update': (character: Character) => void;
   'dice:roll': (roll: DiceRoll) => void;
+  'dice:rolled': (roll: DiceRoll) => void;
   'dice:request': (notation: string) => void;
 
   'room:update-player-role': (data: { playerId: string; role: 'player' | 'spectator' }) => void;
@@ -129,4 +136,4 @@ export type SocketEvents = {
   'player:left': (playerId: string) => void;
 
   'chat:message': (data: { playerId: string; message: string; timestamp: number }) => void;
-};
+};

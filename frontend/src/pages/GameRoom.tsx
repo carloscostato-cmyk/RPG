@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Menu, X, Dice5, MessageSquare, LogOut, Settings, Users, Music, Map as MapIcon, Plus, Eye, EyeOff, UserCheck, Shield } from 'lucide-react';
+import { X, Dice5, LogOut, Settings, Users, Map as MapIcon, Plus, EyeOff, UserCheck, Shield } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GameCanvas } from '../components/GameCanvas';
 import { CharacterSheet } from '../components/CharacterSheet';
@@ -75,7 +75,7 @@ export const GameRoom: React.FC = () => {
               </div>
               <div className="mt-2 flex items-center gap-2 text-xs text-gray-400">
                 <div className="flex -space-x-2">
-                  {room?.players.slice(0, 3).map(p => (
+                  {room?.players.slice(0, 3).map((p: any) => (
                     <div key={p.id} className="w-5 h-5 rounded-full bg-gray-700 border border-gray-900 flex items-center justify-center text-[8px] font-bold">
                       {p.name[0].toUpperCase()}
                     </div>

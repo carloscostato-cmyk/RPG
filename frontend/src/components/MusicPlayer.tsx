@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, SkipForward, Plus, Volume2, Music, Repeat, Trash2 } from 'lucide-react';
+import { Play, Pause, Plus, Volume2, Music, Repeat, Trash2 } from 'lucide-react';
 import { useGame } from '../GameContext';
 import { MusicTrack } from '../../../shared/types';
 
 export const MusicPlayer: React.FC = () => {
-  const { room, currentPlayer, socket } = useGame();
+  const { currentPlayer, socket } = useGame();
   const [currentTrack, setCurrentTrack] = useState<MusicTrack | null>(null);
   const [volume, setVolume] = useState(50);
   const [isPlaying, setIsPlaying] = useState(false);
