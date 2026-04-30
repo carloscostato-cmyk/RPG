@@ -1,0 +1,35 @@
+[build]
+  base = "frontend"
+  publish = "dist"
+  command = "npm run build"
+
+[build.environment]
+  NODE_VERSION = "20"
+  NPM_FLAGS = "--legacy-peer-deps"
+
+[dev]
+  port = 5173
+  command = "npm run dev"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "ALLOWALL"
+    Cross-Origin-Opener-Policy = "same-origin-allow-popups"
+    Cross-Origin-Embedder-Policy = "require-corp"
+
+[build.processing]
+  css = { minify = true }
+  js = { minify = true }
+  html = { pretty_urls = true }
+
+[cache]
+  paths = [
+    "node_modules",
+    ".vite"
+  ]
