@@ -82,13 +82,21 @@ export const DiceOverlay: React.FC = () => {
                   className="flex flex-col items-center"
                 >
                   <span className="font-serif text-7xl font-black text-slate-950 drop-shadow-[0_2px_4px_rgba(255,255,255,0.4)]">
-                    {activeRoll.result}
+                    {activeRoll.total}
                   </span>
                   
                   <div className="mt-2 flex flex-col items-center">
                     <span className="rounded-full bg-slate-950/20 px-3 py-0.5 text-[10px] font-black uppercase tracking-[0.2em] text-amber-950">
-                      d{activeRoll.sides} {activeRoll.modifier !== 0 ? (activeRoll.modifier > 0 ? `+${activeRoll.modifier}` : activeRoll.modifier) : ''}
+                      {activeRoll.expression}
                     </span>
+                    <span className="mt-1 text-xs font-bold text-slate-900">
+                      Rolagens: {activeRoll.results.join(', ')}
+                    </span>
+                    {activeRoll.modifier !== 0 && (
+                      <span className="text-xs font-bold text-slate-900">
+                        Base {activeRoll.result} {activeRoll.modifier > 0 ? '+' : ''}{activeRoll.modifier} = {activeRoll.total}
+                      </span>
+                    )}
                     <span className="mt-1 font-serif text-sm font-bold text-slate-900 border-b border-slate-950/10">
                       {activeRoll.playerName}
                     </span>

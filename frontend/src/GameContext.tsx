@@ -8,6 +8,7 @@ import type {
   GameState,
   MusicState,
   MusicTrack,
+  PlayerRole,
   Player,
   Room,
   SocketEvents,
@@ -38,7 +39,7 @@ interface GameContextType {
   joinRoom: (code: string, playerName: string) => Promise<Room | null>;
   leaveRoom: () => void;
   sendMessage: (message: string) => void;
-  rollDice: (sides: number, modifier?: number, isPrivate?: boolean) => void;
+  rollDice: (sides: number, modifier?: number, isPrivate?: boolean, count?: number) => void;
   addToken: (token?: Partial<Token>) => void;
   updateToken: (token: Token) => void;
   moveToken: (token: Token) => void;
@@ -60,6 +61,7 @@ interface GameContextType {
   nextTurn: () => void;
   extendTimer: (seconds: number) => void;
   setTimerOrder: (order: string[]) => void;
+  setPlayerRole: (playerId: string, role: PlayerRole) => void;
   updateRoom: (updates: Partial<Room>) => void;
   toggleDarkMode: () => void;
   setLanguage: (lang: 'pt' | 'en') => void;
@@ -194,20 +196,25 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     joinRoom,
     leaveRoom,
     sendMessage: (message) => {
-      const rollMatch = message.match(/^[\/|+](roll|rolar)\s+(\d+)?d(\d+)([\+\-]\d+)?/i);
-      if (rollMatch) {
-        const count = parseInt(rollMatch[2] || '1');
-        const sides = parseInt(rollMatch[3]);
-        const modifier = parseInt(rollMatch[4] || '0');
-        
-        for (let i = 0; i < count; i++) {
-          emit('dice:roll', { sides, modifier });
-        }
+      const command = parseRollCommand(message);
+      if (command) {
+        emit('dice:roll', command);
         return;
       }
       emit('chat:message', { message });
     },
-    rollDice: (sides, modifier = 0, isPrivate = false) => emit('dice:roll', { sides, modifier, isPrivate }),
+    rollDice: (sides, modifier = 0, isPrivate = false, count = 1) => {
+      const safeSides = Math.max(2, Math.min(1000, sides));
+      const safeCount = Math.max(1, Math.min(50, count));
+      const safeModifier = Math.max(-999, Math.min(999, modifier));
+      emit('dice:roll', {
+        sides: safeSides,
+        count: safeCount,
+        modifier: safeModifier,
+        expression: `${safeCount}d${safeSides}${safeModifier === 0 ? '' : safeModifier > 0 ? `+${safeModifier}` : safeModifier}`,
+        isPrivate,
+      });
+    },
     addToken: (token = {}) => emit('token:add', token),
     updateToken: (token) => emit('token:update', token),
     moveToken: (token) => emit('token:move', token),
@@ -229,6 +236,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     nextTurn: () => emit('timer:next'),
     extendTimer: (seconds) => emit('timer:extend', seconds),
     setTimerOrder: (order) => emit('timer:setOrder', order),
+    setPlayerRole: (playerId, role) => emit('player:role:set', { playerId, role }),
     updateRoom: (updates) => emit('room:update', updates),
     toggleDarkMode: () => setIsDarkMode((previous) => !previous),
     setLanguage,
@@ -250,4 +258,22 @@ function readStoredIdentity(): ClientIdentity | null {
   } catch {
     return null;
   }
+}
+
+function parseRollCommand(message: string) {
+  const trimmed = message.trim();
+  const match = trimmed.match(/^[\/+](roll|rolar)\s+(.+)$/i);
+  if (!match) return null;
+
+  const rawArgs = match[2].trim().toLowerCase();
+  const argsWithoutMode = rawArgs.replace(/\s+(adv|dis|advantage|disadvantage)\s*$/i, '').trim();
+  const modeMatch = rawArgs.match(/\s+(adv|dis|advantage|disadvantage)\s*$/i);
+  const mode = modeMatch
+    ? modeMatch[1].startsWith('adv')
+      ? 'advantage'
+      : 'disadvantage'
+    : 'normal';
+
+  if (!/^\d{0,2}d\d{1,4}([+-]\d{1,3})?$/i.test(argsWithoutMode)) return null;
+  return { expression: argsWithoutMode, mode } as const;
 }

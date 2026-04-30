@@ -1,4 +1,4 @@
-export type PlayerRole = 'master' | 'player';
+export type PlayerRole = 'master' | 'player' | 'spectator';
 
 export interface Room {
   id: string;
@@ -82,7 +82,7 @@ export interface Token {
   imageUrl?: string;
   name: string;
   isVisible: boolean;
-  layer: 'map' | 'tokens' | 'effects' | 'fog';
+  layer: 'map' | 'tokens' | 'effects' | 'fog' | 'gm-hidden';
   rotation: number;
   color?: string;
   locked: boolean;
@@ -127,8 +127,12 @@ export interface DiceRoll {
   id: string;
   playerId: string;
   playerName: string;
+  expression: string;
+  count: number;
   sides: number;
   modifier: number;
+  mode?: 'normal' | 'advantage' | 'disadvantage';
+  results: number[];
   result: number;
   total: number;
   isPrivate: boolean;
@@ -187,7 +191,16 @@ export type SocketEvents = {
   'token:update': (token: Token) => void;
 
   'character:update': (character: Character) => void;
-  'dice:roll': (roll: { sides: number; modifier?: number; isPrivate?: boolean }) => void;
+  'dice:roll': (
+    roll: {
+      expression?: string;
+      sides?: number;
+      count?: number;
+      modifier?: number;
+      mode?: 'normal' | 'advantage' | 'disadvantage';
+      isPrivate?: boolean;
+    }
+  ) => void;
   'dice:rolled': (roll: DiceRoll) => void;
 
   'music:add': (track: Pick<MusicTrack, 'name' | 'url' | 'groupId'>) => void;
@@ -212,6 +225,7 @@ export type SocketEvents = {
 
   'player:joined': (player: Player) => void;
   'player:left': (playerId: string) => void;
+  'player:role:set': (data: { playerId: string; role: PlayerRole }) => void;
 
   'chat:message': (data: { message: string }) => void;
   'chat:new': (message: ChatMessage) => void;

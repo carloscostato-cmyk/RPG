@@ -9,6 +9,7 @@ export const TurnTimer: React.FC = () => {
   const [tempOrder, setTempOrder] = useState<string[]>([]);
 
   const isMaster = Boolean(currentPlayer?.isMaster);
+  const timerVisible = room?.settings?.timerEnabled ?? true;
   const players = room?.players.filter((player) => player.connected) || [];
   const currentTurnPlayerId = timer?.playerOrder[timer.currentPlayerIndex];
   const currentTurnPlayer = players.find((player) => player.id === currentTurnPlayerId);
@@ -56,6 +57,8 @@ export const TurnTimer: React.FC = () => {
     setTimerOrder(tempOrder);
     setIsManagingOrder(false);
   };
+
+  if (!timerVisible && !isMaster) return null;
 
   return (
     <div className="sticky top-0 z-50 border-b border-[#c9a45f]/25 bg-[linear-gradient(180deg,#0f172a_0%,#020617_100%)] p-3 text-[#f6ead0] shadow-[0_15px_35px_rgba(0,0,0,0.4)]">
